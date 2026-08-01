@@ -7,7 +7,6 @@ export function AuthScreen() {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
-  const [invite, setInvite] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -17,7 +16,7 @@ export function AuthScreen() {
     setBusy(true)
     try {
       if (mode === 'login') await actions.login(email.trim(), password)
-      else await actions.register(name.trim(), email.trim(), password, invite.trim())
+      else await actions.register(name.trim(), email.trim(), password)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -57,13 +56,6 @@ export function AuthScreen() {
             <span>Пароль</span>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Минимум 6 символов" autoComplete="current-password" required />
           </label>
-          {mode === 'register' && (
-            <label className="field">
-              <span>Код приглашения (если есть)</span>
-              <input value={invite} onChange={(e) => setInvite(e.target.value)} placeholder="ABC123" />
-              <small className="field-hint">Оставьте пустым, чтобы создать свою пару</small>
-            </label>
-          )}
           {error && <div className="error-banner">{error}</div>}
           <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
             {busy ? 'Подождите...' : mode === 'login' ? 'Войти' : 'Начать'}

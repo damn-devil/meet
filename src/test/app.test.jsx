@@ -10,10 +10,13 @@ vi.mock('../api.js', () => ({
   clearToken: vi.fn(),
   subscribeTasks: () => ({ subscribe: vi.fn() }),
   unsubscribeTasks: vi.fn(),
+  subscribeRequests: () => ({ subscribe: vi.fn() }),
+  unsubscribeRequests: vi.fn(),
   api: {
     me: vi.fn(),
     tasks: vi.fn(),
     stats: vi.fn(),
+    myRequests: vi.fn(),
   },
 }))
 
@@ -49,6 +52,7 @@ beforeEach(() => {
   api.me.mockResolvedValue({ user, couple })
   api.tasks.mockResolvedValue([task])
   api.stats.mockResolvedValue({ completed: 0, missed: 0, cancelled: 0, avgRating: null, hasActiveStreak: false })
+  api.myRequests.mockResolvedValue([])
 })
 
 describe('App', () => {

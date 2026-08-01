@@ -119,6 +119,21 @@ create index if not exists idx_checkins_task on public.checkins(task_id);
 create index if not exists idx_agreements_task on public.agreements(task_id);
 create index if not exists idx_ratings_task on public.ratings(task_id);
 
+-- Запросы на создание пары: один находит другого по имени и отправляет запрос,
+-- второй соглашается или отказывается.
+create table if not exists public.couple_requests (
+  id uuid primary key default gen_random_uuid(),
+  from_id uuid not null references public.profiles(id) on delete cascade,
+  to_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending','accepted','declined','cancelled')),
+  created_at timestamptz not null default now(),
+  responded_at timestamptz
+);
+
+alter table public.couple_requests add column if not exists responded_at timestamptz;
+create index if not exists idx_requests_from on public.couple_requests(from_id);
+create index if not exists idx_requests_to on public.couple_requests(to_id);
+
 -- id пары текущего пользователя
 create or replace function public.auth_couple_id()
 returns uuid
@@ -138,6 +153,11 @@ alter table public.comments enable row level security;
 alter table public.checkins enable row level security;
 alter table public.agreements enable row level security;
 alter table public.ratings enable row level security;
+alter table public.couple_requests enable row level security;
+
+drop policy if exists "requests_select" on public.couple_requests;
+create policy "requests_select" on public.couple_requests
+  for select to authenticated using (from_id = auth.uid() or to_id = auth.uid());
 
 drop policy if exists "couples_select" on public.couples;
 create policy "couples_select" on public.couples
@@ -606,6 +626,10 @@ begin
 end
 $$;
 
+-- Убираем старую сигнатуру без p_bg, иначе при вызове с 3 аргументами
+-- Postgres не может выбрать между перегрузками («could not choose the best candidate»).
+drop function if exists public.update_couple_settings(integer, integer, integer);
+
 create or replace function public.update_couple_settings(
   p_radius_m int default null, p_window_min int default null, p_grace_min int default null,
   p_bg text default null
@@ -620,6 +644,125 @@ as $$
     bg = case when p_bg is not null then btrim(p_bg) else bg end
   where id = public.auth_couple_id()
   returning public.couple_view(id)
+$$;
+
+-- ============================================================
+-- Поиск и создание пары по запросам (вместо кода приглашения)
+-- ============================================================
+
+create or replace function public.request_view(p_request_id uuid)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select jsonb_build_object(
+    'id', r.id, 'from_id', r.from_id, 'to_id', r.to_id, 'status', r.status,
+    'created_at', r.created_at,
+    'from', jsonb_build_object('id', f.id, 'name', f.name, 'avatar', f.avatar, 'avatar_url', f.avatar_url),
+    'to', jsonb_build_object('id', t.id, 'name', t.name, 'avatar', t.avatar, 'avatar_url', t.avatar_url)
+  )
+  from public.couple_requests r
+  join public.profiles f on f.id = r.from_id
+  join public.profiles t on t.id = r.to_id
+  where r.id = p_request_id
+$$;
+
+create or replace function public.get_my_requests()
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(jsonb_agg(public.request_view(r.id) order by r.created_at desc), '[]'::jsonb)
+  from public.couple_requests r
+  where (r.from_id = auth.uid() or r.to_id = auth.uid())
+    and r.status = 'pending'
+$$;
+
+-- Поиск людей по имени/никнейму (без тех, кто уже в паре и без себя)
+create or replace function public.search_users(p_query text default null)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', p.id, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url
+  ) order by p.name), '[]'::jsonb)
+  from public.profiles p
+  where p.id <> auth.uid()
+    and p.couple_id is null
+    and (p_query is null or btrim(p_query) = '' or p.name ilike '%' || btrim(p_query) || '%')
+  limit 20
+$$;
+
+create or replace function public.send_couple_request(p_to_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_target public.profiles;
+  v_existing int;
+  v_new public.couple_requests;
+begin
+  if p_to_id is null then raise exception 'Выберите пользователя'; end if;
+  if p_to_id = auth.uid() then raise exception 'Нельзя отправить запрос себе'; end if;
+  if public.auth_couple_id() is not null then raise exception 'Вы уже в паре'; end if;
+  select * into v_target from public.profiles where id = p_to_id;
+  if not found then raise exception 'Пользователь не найден'; end if;
+  if v_target.couple_id is not null then raise exception 'Этот человек уже в паре'; end if;
+  select count(*) into v_existing from public.couple_requests
+  where ((from_id = auth.uid() and to_id = p_to_id) or (from_id = p_to_id and to_id = auth.uid()))
+    and status = 'pending';
+  if v_existing > 0 then raise exception 'Запрос уже отправлен'; end if;
+  insert into public.couple_requests (from_id, to_id)
+  values (auth.uid(), p_to_id)
+  returning * into v_new;
+  return public.request_view(v_new.id);
+end
+$$;
+
+create or replace function public.respond_couple_request(p_request_id uuid, p_approve boolean)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_req public.couple_requests;
+  v_couple uuid;
+begin
+  select * into v_req from public.couple_requests where id = p_request_id;
+  if not found then raise exception 'Запрос не найден'; end if;
+  if v_req.to_id <> auth.uid() then raise exception 'Отвечать может только тот, кому отправили запрос'; end if;
+  if v_req.status <> 'pending' then raise exception 'Запрос уже обработан'; end if;
+  if p_approve then
+    if public.auth_couple_id() is not null then raise exception 'Вы уже в паре'; end if;
+    if (select couple_id from public.profiles where id = v_req.from_id) is not null then
+      raise exception 'Отправитель уже в паре';
+    end if;
+    insert into public.couples (invite_code, radius_m, window_min, grace_min)
+    values (upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6)), 150, 30, 15)
+    returning id into v_couple;
+    update public.profiles set couple_id = v_couple where id in (v_req.from_id, v_req.to_id);
+    update public.couple_requests set status = 'accepted', responded_at = now() where id = p_request_id;
+    update public.couple_requests set status = 'declined', responded_at = now()
+    where status = 'pending' and (from_id in (v_req.from_id, v_req.to_id) or to_id in (v_req.from_id, v_req.to_id));
+    return jsonb_build_object('couple', public.couple_view(v_couple));
+  else
+    update public.couple_requests set status = 'declined', responded_at = now() where id = p_request_id;
+    return jsonb_build_object('couple', null);
+  end if;
+end
+$$;
+
+create or replace function public.cancel_couple_request(p_request_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_req public.couple_requests;
+begin
+  select * into v_req from public.couple_requests where id = p_request_id;
+  if not found then raise exception 'Запрос не найден'; end if;
+  if v_req.from_id <> auth.uid() then raise exception 'Отменить может только отправитель'; end if;
+  if v_req.status <> 'pending' then raise exception 'Запрос уже обработан'; end if;
+  update public.couple_requests set status = 'cancelled', responded_at = now() where id = p_request_id;
+  return jsonb_build_object('ok', true);
+end
 $$;
 
 -- ============================================================
@@ -660,6 +803,9 @@ begin
   end if;
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'checkins') then
     alter publication supabase_realtime add table public.checkins;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'couple_requests') then
+    alter publication supabase_realtime add table public.couple_requests;
   end if;
 end
 $$;

@@ -35,9 +35,10 @@ export function TasksScreen() {
           <h1>Планы</h1>
           <p className="screen-sub">{state.couple?.members?.map((m) => m.name).join(' и ')}</p>
         </div>
-        <button className="btn btn-primary btn-round" onClick={() => setShowAdd(true)} aria-label="Добавить план">+</button>
+        {state.couple && (
+          <button className="btn btn-primary btn-round" onClick={() => setShowAdd(true)} aria-label="Добавить план">+</button>
+        )}
       </header>
-
       <div className="chip-row">
         {filters.map((f) => (
           <button key={f.id} className={`chip ${filter === f.id ? 'active' : ''}`} onClick={() => setFilter(f.id)}>
@@ -47,7 +48,15 @@ export function TasksScreen() {
       </div>
 
       <div className="task-list">
-        {tasks.length === 0 && (
+        {!state.couple && (
+          <div className="empty-state">
+            <div className="empty-art">💛</div>
+            <p>Вы пока не в паре</p>
+            <span>Найдите партнёра по имени в профиле и отправьте запрос</span>
+            <button className="btn btn-primary" onClick={() => actions.setView('profile')}>Найти пару</button>
+          </div>
+        )}
+        {state.couple && tasks.length === 0 && (
           <div className="empty-state">
             <div className="empty-art">🗺️</div>
             <p>Пока пусто</p>

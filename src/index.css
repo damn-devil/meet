@@ -118,7 +118,7 @@ select {
 /* Свой фон из фотографии: фото + лёгкий тон темы для читаемости */
 .app.has-bg::before {
   background-image:
-    linear-gradient(color-mix(in srgb, var(--bg) 55%, transparent), color-mix(in srgb, var(--bg) 55%, transparent)),
+    linear-gradient(color-mix(in srgb, var(--bg) 10%, transparent), color-mix(in srgb, var(--bg) 10%, transparent)),
     var(--bg-img, none);
   background-size: cover;
   background-position: center;
@@ -451,7 +451,7 @@ select {
 /* ---------- Tab bar (iOS, плавающая «пилюля» стекла) ---------- */
 .tab-bar {
   position: fixed;
-  bottom: calc(30px + var(--safe-bottom));
+  bottom: calc(14px + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -459,7 +459,7 @@ select {
   gap: 2px;
   width: fit-content;
   max-width: calc(100vw - 40px);
-  height: 56px;
+  height: 48px;
   background: color-mix(in srgb, var(--bg) 38%, transparent);
   backdrop-filter: blur(32px) saturate(1.9);
   -webkit-backdrop-filter: blur(32px) saturate(1.9);
@@ -469,7 +469,7 @@ select {
     0 18px 48px rgba(0, 0, 0, 0.24),
     0 2px 10px rgba(0, 0, 0, 0.1),
     inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
-  padding: 5px 7px;
+  padding: 4px 6px;
   z-index: 50;
 }
 .tab-item {
@@ -478,10 +478,10 @@ select {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-width: 54px;
-  height: 44px;
-  padding: 2px 12px;
+  gap: 1px;
+  min-width: 52px;
+  height: 38px;
+  padding: 2px 10px;
   border-radius: 999px;
   color: var(--text2);
   transition: color 0.2s, background 0.2s, transform 0.15s var(--spring);
@@ -500,16 +500,16 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-}
-.tab-icon svg {
   width: 20px;
   height: 20px;
+}
+.tab-icon svg {
+  width: 18px;
+  height: 18px;
   stroke-width: 2;
 }
 .tab-label {
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -1738,4 +1738,148 @@ select {
 }
 .leaflet-popup-content-wrapper {
   border-radius: 14px !important;
+}
+
+/* ---------- Запрос на пару: плавающий баннер ---------- */
+.request-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + var(--safe-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 32px);
+  width: fit-content;
+  padding: 10px 12px;
+  border-radius: 18px;
+  animation: sheetup 0.34s var(--ease);
+}
+.request-banner-avatar {
+  flex: none;
+  display: flex;
+}
+.request-banner-text {
+  font-size: 13px;
+  line-height: 1.25;
+}
+.request-banner-text strong {
+  font-weight: 700;
+}
+.request-banner-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+/* ---------- Поиск людей и запросы на пару (профиль) ---------- */
+.request-incoming,
+.request-outgoing {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.request-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-card);
+}
+.request-text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.25;
+}
+.request-text strong {
+  font-weight: 700;
+}
+.request-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.user-search-item {
+  align-items: center;
+  gap: 10px;
+}
+.user-search-item .search-item-name {
+  flex: 1;
+}
+
+/* ---------- Обрезка аватара (кроп) ---------- */
+.crop-overlay {
+  align-items: center;
+}
+.crop-modal {
+  width: calc(100vw - 40px);
+  max-width: 360px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(30px) saturate(1.6);
+  -webkit-backdrop-filter: blur(30px) saturate(1.6);
+  border-radius: 24px;
+  border: 1px solid color-mix(in srgb, #fff 30%, transparent);
+  padding: 16px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+  animation: popin 0.28s var(--spring);
+}
+@keyframes popin {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+}
+.crop-box {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  margin: 0 auto;
+  background: #000;
+  touch-action: none;
+  cursor: grab;
+}
+.crop-box:active {
+  cursor: grabbing;
+}
+.crop-box img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-left: -50%;
+  margin-top: -50%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: transform;
+  max-width: none;
+}
+.crop-zoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px auto 0;
+  width: min(100%, 240px);
+  color: var(--text2);
+  font-size: 18px;
+  font-weight: 600;
+}
+.crop-zoom input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.crop-loading {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--text2);
+  font-size: 14px;
+}
+.crop-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.crop-actions .btn {
+  flex: 1;
 }

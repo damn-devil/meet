@@ -5,6 +5,16 @@ import { applyTheme, safeGet, safeSet, savedAccent } from '../lib/theme.js'
 import { telegramUrl, imessageUrl, hasAnyContact } from '../lib/contacts.js'
 import { Icon } from '../components/Icon.jsx'
 import { Avatar } from '../components/Avatar.jsx'
+import { CropAvatar } from '../components/CropAvatar.jsx'
+
+function dataUrlToBlob(dataUrl) {
+  const [meta, b64] = dataUrl.split(',')
+  const mime = /data:([^;]+)/.exec(meta)?.[1] || 'image/jpeg'
+  const bin = atob(b64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return new Blob([bytes], { type: mime })
+}
 
 export function ProfileScreen() {
   const { state, actions } = useStore()
@@ -17,6 +27,7 @@ export function ProfileScreen() {
   const [avatar, setAvatar] = useState(me?.avatar || '🙂')
   const [avatarUrl, setAvatarUrl] = useState(me?.avatar_url || '')
   const [uploading, setUploading] = useState(false)
+  const [cropSrc, setCropSrc] = useState(null)
   const [telegram, setTelegram] = useState(me?.telegram || '')
   const [imessage, setImessage] = useState(me?.imessage || '')
 
@@ -32,12 +43,20 @@ export function ProfileScreen() {
     }
   }
 
-  const uploadPhoto = async (e) => {
+  const pickAvatar = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => setCropSrc(reader.result)
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const saveCroppedAvatar = async (dataUrl) => {
     setUploading(true)
     try {
-      const url = await actions.uploadAvatar(file)
+      const blob = dataUrlToBlob(dataUrl)
+      const url = await actions.uploadAvatar(blob, 'jpg')
       setAvatarUrl(url)
       await actions.updateMe({ name, bio, avatar, avatar_url: url, telegram, imessage })
       actions.toast('Фото профиля обновлено', 'success')
@@ -45,16 +64,7 @@ export function ProfileScreen() {
       actions.toast(err.message, 'error')
     } finally {
       setUploading(false)
-      e.target.value = ''
-    }
-  }
-
-  const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(state.couple.invite_code)
-      actions.toast('Код скопирован', 'success')
-    } catch {
-      actions.toast(state.couple.invite_code)
+      setCropSrc(null)
     }
   }
 
@@ -76,7 +86,7 @@ export function ProfileScreen() {
               <Avatar url={avatarUrl} emoji={avatar} size="big" alt={name} />
               <label className="avatar-upload-btn">
                 {uploading ? 'Загрузка…' : '📷 Загрузить фото'}
-                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadPhoto} />
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={pickAvatar} />
               </label>
             </div>
             <div className="avatar-picker">
@@ -126,13 +136,7 @@ export function ProfileScreen() {
             </div>
           </div>
           {!partner && (
-            <div className="invite-box">
-              <p>Пригласите партнёра по коду:</p>
-              <div className="invite-code">
-                <strong>{state.couple?.invite_code}</strong>
-                <button className="btn btn-soft" onClick={copyCode}>Копировать</button>
-              </div>
-            </div>
+            <p className="bg-hint">Партнёр присоединится, когда вы отправите ему запрос в настройках.</p>
           )}
           {partner && (
             <div className="contact-actions">
@@ -181,6 +185,8 @@ export function ProfileScreen() {
           Выйти
         </button>
       </div>
+
+      {cropSrc && <CropAvatar src={cropSrc} onCancel={() => setCropSrc(null)} onSave={saveCroppedAvatar} />}
     </div>
   )
 }
@@ -198,31 +204,55 @@ function SettingsPanel() {
   const [notifStatus, setNotifStatus] = useState(
     'Notification' in window ? Notification.permission : 'unsupported'
   )
-  const [inviteInput, setInviteInput] = useState('')
-  const [joining, setJoining] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const [sendingTo, setSendingTo] = useState(null)
 
-  const copyCode = async () => {
+  const searchUsers = async () => {
+    if (!searchQuery.trim()) return
+    setSearching(true)
     try {
-      await navigator.clipboard.writeText(couple.invite_code)
-      actions.toast('Код скопирован', 'success')
-    } catch {
-      actions.toast(couple.invite_code)
-    }
-  }
-
-  const joinByCode = async () => {
-    const code = inviteInput.trim()
-    if (!code) return
-    setJoining(true)
-    try {
-      await actions.joinCouple(code)
-      setInviteInput('')
+      const results = await actions.searchUsers(searchQuery.trim())
+      setSearchResults(results || [])
     } catch (e) {
       actions.toast(e.message, 'error')
     } finally {
-      setJoining(false)
+      setSearching(false)
     }
   }
+
+  const sendRequest = async (toId) => {
+    setSendingTo(toId)
+    try {
+      await actions.sendRequest(toId)
+      setSearchResults([])
+      setSearchQuery('')
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    } finally {
+      setSendingTo(null)
+    }
+  }
+
+  const respond = async (id, approve) => {
+    try {
+      await actions.respondRequest(id, approve)
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    }
+  }
+
+  const cancelReq = async (id) => {
+    try {
+      await actions.cancelRequest(id)
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    }
+  }
+
+  const incoming = state.requests.filter((r) => r.to_id === me?.id && r.status === 'pending')
+  const outgoing = state.requests.filter((r) => r.from_id === me?.id && r.status === 'pending')
 
   const requestNotif = async () => {
     try {
@@ -290,30 +320,72 @@ function SettingsPanel() {
     <div className="settings-panel">
       <div className="setting-group">
         <span className="setting-label">Пара</span>
+
         {state.couple ? (
-          <>
-            <p className="bg-hint">Код приглашения — отдайте его второму человеку, он введёт его в своих настройках.</p>
-            <div className="invite-code settings-invite">
-              <strong>{state.couple.invite_code}</strong>
-              <button className="btn btn-soft" onClick={copyCode}>Копировать</button>
-            </div>
-          </>
+          <p className="bg-hint">Вы в паре. Планы, фон и настройки общие — их видит партнёр.</p>
         ) : (
           <>
-            <p className="bg-hint">Введите код приглашения партнёра, чтобы объединиться в пару:</p>
-            <div className="invite-join">
+            {incoming.length > 0 && (
+              <div className="request-incoming">
+                {incoming.map((r) => (
+                  <div key={r.id} className="request-item glass">
+                    <Avatar url={r.from.avatar_url} emoji={r.from.avatar || '🙂'} size="comment" alt={r.from.name} />
+                    <div className="request-text">
+                      <strong>{r.from.name}</strong> хочет быть с вами в паре
+                    </div>
+                    <div className="request-actions">
+                      <button className="btn btn-primary btn-sm" onClick={() => respond(r.id, true)}>Согласиться</button>
+                      <button className="btn btn-danger-soft btn-sm" onClick={() => respond(r.id, false)}>Отказать</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p className="bg-hint">Найдите партнёра по имени или никнейму и отправьте запрос:</p>
+            <div className="search-row">
               <input
-                value={inviteInput}
-                onChange={(e) => setInviteInput(e.target.value.toUpperCase())}
-                placeholder="КОД123"
-                maxLength={6}
-                autoCapitalize="characters"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
+                placeholder="Имя или никнейм"
                 autoCorrect="off"
               />
-              <button className="btn btn-primary" disabled={joining || !inviteInput.trim()} onClick={joinByCode}>
-                {joining ? 'Присоединение…' : 'В пару'}
+              <button className="btn btn-soft" onClick={searchUsers} disabled={searching}>
+                {searching ? '…' : '🔍'}
               </button>
             </div>
+            {searchResults.length > 0 && (
+              <div className="search-results">
+                {searchResults.map((u) => (
+                  <div key={u.id} className="search-item user-search-item">
+                    <Avatar url={u.avatar_url} emoji={u.avatar || '🙂'} size="comment" alt={u.name} />
+                    <span className="search-item-name">{u.name}</span>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={sendingTo === u.id}
+                      onClick={() => sendRequest(u.id)}
+                    >
+                      {sendingTo === u.id ? 'Отправляем…' : 'Пригласить'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {outgoing.length > 0 && (
+              <div className="request-outgoing">
+                {outgoing.map((r) => (
+                  <div key={r.id} className="request-item glass">
+                    <Avatar url={r.to.avatar_url} emoji={r.to.avatar || '🙂'} size="comment" alt={r.to.name} />
+                    <div className="request-text">
+                      Запрос отправлен: <strong>{r.to.name}</strong>
+                    </div>
+                    <button className="btn btn-soft btn-sm" onClick={() => cancelReq(r.id)}>Отменить</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

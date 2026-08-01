@@ -6,6 +6,7 @@ import { ProfileScreen } from './screens/ProfileScreen.jsx'
 import { TaskDetailScreen } from './screens/TaskDetailScreen.jsx'
 import { Toast } from './components/Toast.jsx'
 import { Icon } from './components/Icon.jsx'
+import { Avatar } from './components/Avatar.jsx'
 import { useEffect, useRef } from 'react'
 import './index.css'
 
@@ -85,8 +86,29 @@ function AppInner() {
   return (
     <div className={`app${bg ? ' has-bg' : ''}`} style={bg ? { '--bg-img': `url("${bg}")` } : undefined}>
       {screen}
+      <RequestsBanner />
       <TabBar />
       <Toast />
+    </div>
+  )
+}
+
+function RequestsBanner() {
+  const { state, actions } = useStore()
+  const incoming = state.requests?.find((r) => r.to_id === state.user?.id && r.status === 'pending')
+  if (!incoming) return null
+  return (
+    <div className="request-banner glass">
+      <span className="request-banner-avatar">
+        <Avatar url={incoming.from?.avatar_url} emoji={incoming.from?.avatar || '🙂'} size="comment" alt={incoming.from?.name} />
+      </span>
+      <div className="request-banner-text">
+        <strong>{incoming.from?.name}</strong> хочет быть в паре с вами
+      </div>
+      <div className="request-banner-actions">
+        <button className="btn btn-primary btn-sm" onClick={() => actions.respondRequest(incoming.id, true)}>Согласиться</button>
+        <button className="btn btn-danger-soft btn-sm" onClick={() => actions.respondRequest(incoming.id, false)}>Отказать</button>
+      </div>
     </div>
   )
 }

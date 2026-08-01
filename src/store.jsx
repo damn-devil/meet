@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react'
-import { api, subscribeTasks, unsubscribeTasks, hasSession, clearToken } from './api.js'
+import { api, subscribeTasks, unsubscribeTasks, subscribeRequests, unsubscribeRequests, hasSession, clearToken } from './api.js'
 import { applyTheme, savedAccent } from './lib/theme.js'
 
 const StoreContext = createContext(null)
@@ -8,6 +8,7 @@ const initialState = {
   user: null,
   couple: null,
   tasks: [],
+  requests: [],
   stats: { completed: 0, missed: 0, cancelled: 0, avgRating: null },
   view: 'tasks',
   selectedTask: null,
@@ -43,6 +44,8 @@ function reducer(state, action) {
       return { ...state, stats: action.stats }
     case 'SET_BG':
       return { ...state, bg: action.bg }
+    case 'SET_REQUESTS':
+      return { ...state, requests: action.requests }
     case 'VIEW':
       return { ...state, view: action.view, selectedTask: action.view === 'task' ? action.id : state.selectedTask, mapFocus: action.view === 'map' ? null : state.mapFocus }
     case 'MAP_FOCUS':
@@ -103,6 +106,43 @@ export function StoreProvider({ children }) {
     connect(coupleId)
   }
 
+  const loadRequests = async () => {
+    try {
+      const requests = await api.myRequests()
+      dispatch({ type: 'SET_REQUESTS', requests })
+      return requests
+    } catch {
+      return []
+    }
+  }
+
+  const refreshAfterCouple = async () => {
+    const data = await api.me().catch(() => null)
+    if (!data) return
+    const wasInCouple = !!stateRef.current.couple
+    dispatch({ type: 'BOOT', user: data.user, couple: data.couple })
+    await loadRequests()
+    await loadAll(data.couple?.id)
+    if (!wasInCouple && data.couple) showToast(dispatch, 'Вы в паре! Можно планировать встречи', 'success')
+  }
+
+  const connectRequests = () => {
+    if (!stateRef.current.user?.id) return
+    subscribeRequests((payload) => {
+      const me = stateRef.current.user?.id
+      if (!me) return
+      const row = payload.new || {}
+      if (payload.eventType === 'INSERT' && row.to_id === me && row.status === 'pending') {
+        loadRequests()
+        showToast(dispatch, 'Вам отправили запрос на пару — посмотрите в Профиле', 'info')
+      } else if (row.status === 'accepted') {
+        refreshAfterCouple()
+      } else {
+        loadRequests()
+      }
+    })
+  }
+
   useEffect(() => {
     let cancelled = false
     const boot = async () => {
@@ -116,6 +156,8 @@ export function StoreProvider({ children }) {
         if (cancelled) return
         dispatch({ type: 'BOOT', user: data.user, couple: data.couple })
         await loadAll(data.couple?.id)
+        await loadRequests()
+        connectRequests()
       } catch (e) {
         if (cancelled) return
         if (e.code === 'PGRST301' || /jwt|token|auth/i.test(e.message || '')) {
@@ -130,6 +172,7 @@ export function StoreProvider({ children }) {
     return () => {
       cancelled = true
       unsubscribeTasks()
+      unsubscribeRequests()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -139,12 +182,16 @@ export function StoreProvider({ children }) {
       const data = await api.login({ email, password })
       dispatch({ type: 'BOOT', user: data.user, couple: data.couple })
       await loadAll(data.couple?.id)
+      await loadRequests()
+      connectRequests()
       return data
     },
-    register: async (name, email, password, invite) => {
-      const data = await api.register({ name, email, password, invite })
+    register: async (name, email, password) => {
+      const data = await api.register({ name, email, password })
       dispatch({ type: 'BOOT', user: data.user, couple: data.couple })
       await loadAll(data.couple?.id)
+      await loadRequests()
+      connectRequests()
       return data
     },
     logout: async () => {
@@ -152,6 +199,7 @@ export function StoreProvider({ children }) {
         await api.logout()
       } catch {}
       unsubscribeTasks()
+      unsubscribeRequests()
       coupleIdRef.current = null
       dispatch({ type: 'LOGOUT' })
     },
@@ -169,19 +217,35 @@ export function StoreProvider({ children }) {
       if (me) applyTheme(me.theme, savedAccent())
       return data
     },
-    uploadAvatar: (file) => api.uploadAvatar(file),
+    uploadAvatar: (file, ext) => api.uploadAvatar(file, ext),
     updateCouple: async (body) => {
       const couple = await api.updateCouple(body)
       dispatch({ type: 'SET_COUPLE', couple })
       return couple
     },
-    joinCouple: async (code) => {
-      const couple = await api.joinCouple(code)
-      if (couple) {
-        dispatch({ type: 'SET_COUPLE', couple })
-        showToast(dispatch, 'Вы в паре!', 'success')
+    searchUsers: (query) => api.searchUsers(query),
+    sendRequest: async (toId) => {
+      const req = await api.sendCoupleRequest(toId)
+      await loadRequests()
+      showToast(dispatch, 'Запрос отправлен — ждём ответа', 'success')
+      return req
+    },
+    respondRequest: async (id, approve) => {
+      const res = await api.respondCoupleRequest(id, approve)
+      if (approve && res?.couple) {
+        dispatch({ type: 'SET_COUPLE', couple: res.couple })
+        await loadRequests()
+        await loadAll(res.couple.id)
+        showToast(dispatch, 'Вы в паре! Можно планировать встречи', 'success')
+      } else {
+        await loadRequests()
       }
-      return couple
+      return res
+    },
+    cancelRequest: async (id) => {
+      await api.cancelCoupleRequest(id)
+      await loadRequests()
+      return null
     },
     createTask: async (body) => {
       const task = await api.createTask(body)

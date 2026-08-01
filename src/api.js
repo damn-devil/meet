@@ -39,7 +39,7 @@ function authError(err) {
 }
 
 export const api = {
-  register: async ({ name, email, password, invite }) => {
+  register: async ({ name, email, password }) => {
     const client = supabaseReady()
     const { data, error } = await client.auth.signUp({
       email,
@@ -51,7 +51,6 @@ export const api = {
       throw new Error('Мы отправили письмо на почту — подтвердите адрес и войдите')
     }
     await rpc('create_profile', { p_name: name })
-    await rpc('join_or_create_couple', { p_invite: invite || null })
     return api.me()
   },
   login: async ({ email, password }) => {
@@ -62,10 +61,6 @@ export const api = {
     if (!me.user) {
       const name = data.user?.user_metadata?.name || 'Пользователь'
       await rpc('create_profile', { p_name: name })
-      me = await api.me()
-    }
-    if (!me.couple) {
-      await rpc('join_or_create_couple', { p_invite: null })
       me = await api.me()
     }
     return me
@@ -86,11 +81,10 @@ export const api = {
     })
     return api.me()
   },
-  uploadAvatar: async (file) => {
+  uploadAvatar: async (file, ext = 'jpg') => {
     const client = supabaseReady()
     const { data: session } = await client.auth.getSession()
     const uid = session?.session?.user?.id || 'anon'
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
     const path = `${uid}/${Date.now()}.${ext}`
     const { error } = await client.storage.from('avatars').upload(path, file, { upsert: true, cacheControl: '3600' })
     if (error) throw new Error(error.message || 'Не удалось загрузить фото')
@@ -129,11 +123,16 @@ export const api = {
       p_grace_min: body.grace_min,
       p_bg: body.bg,
     }),
-  joinCouple: (code) => rpc('join_or_create_couple', { p_invite: code || null }),
+  searchUsers: (query) => rpc('search_users', { p_query: query || null }),
+  myRequests: () => rpc('get_my_requests'),
+  sendCoupleRequest: (toId) => rpc('send_couple_request', { p_to_id: toId }),
+  respondCoupleRequest: (id, approve) => rpc('respond_couple_request', { p_request_id: id, p_approve: approve }),
+  cancelCoupleRequest: (id) => rpc('cancel_couple_request', { p_request_id: id }),
   stats: () => rpc('get_stats'),
 }
 
 let channel = null
+let requestsChannel = null
 
 async function fetchTask(id) {
   try {
@@ -175,4 +174,24 @@ export function subscribeTasks(coupleId, onEvent) {
 export function unsubscribeTasks() {
   if (channel) supabase?.removeChannel(channel)
   channel = null
+}
+
+// Запросы на пару: слушаем, чтобы мгновенно показать уведомление
+export function subscribeRequests(onEvent) {
+  if (!supabase) return null
+  if (requestsChannel) return requestsChannel
+  requestsChannel = supabase
+    .channel('couple-requests')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'couple_requests' },
+      (payload) => onEvent(payload)
+    )
+    .subscribe()
+  return requestsChannel
+}
+
+export function unsubscribeRequests() {
+  if (requestsChannel) supabase?.removeChannel(requestsChannel)
+  requestsChannel = null
 }
