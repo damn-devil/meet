@@ -112,9 +112,9 @@ export const api = {
       p_description: body.description || '',
       p_place_name: body.place_name || '',
       p_address: body.address || '',
-      p_lat: body.lat,
-      p_lng: body.lng,
-      p_scheduled_at: new Date(body.scheduled_at).toISOString(),
+      p_lat: body.lat ?? null,
+      p_lng: body.lng ?? null,
+      p_scheduled_at: body.scheduled_at ? new Date(body.scheduled_at).toISOString() : null,
     }),
   comment: (id, text) => rpc('add_comment', { p_task_id: id, p_text: text }),
   checkin: (id, lat, lng, accuracy) =>
@@ -128,6 +128,7 @@ export const api = {
   respondAgreement: (id, approve) =>
     rpc('respond_agreement', { p_agreement_id: id, p_approve: approve }),
   cancelAgreement: (id) => rpc('cancel_agreement', { p_agreement_id: id }),
+  markMissed: (id) => rpc('mark_task_missed', { p_task_id: id }),
   rate: (id, score, comment) =>
     rpc('rate_task', { p_task_id: id, p_score: score, p_comment: comment || '' }),
   updateCouple: (body) =>

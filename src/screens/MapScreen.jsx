@@ -45,7 +45,7 @@ export function MapScreen() {
     markersRef.current.forEach((m) => map.removeMarker(m))
     markersRef.current = []
     state.tasks.forEach((t) => {
-      if (t.lat === undefined || t.lng === undefined) return
+      if (t.lat == null || t.lng == null) return
       const meta = statusMeta(t.status)
       const marker = map.addMarker(t.lat, t.lng, {
         title: t.title,
@@ -61,7 +61,7 @@ export function MapScreen() {
     if (!map || !state.mapFocus) return
     if (focusedRef.current === state.mapFocus) return
     const t = state.tasks.find((x) => x.id === state.mapFocus)
-    if (!t || t.lat === undefined || t.lng === undefined) return
+    if (!t || t.lat == null || t.lng == null) return
     focusedRef.current = state.mapFocus
     map.setCenter(t.lat, t.lng, 15)
     setInfo(t)

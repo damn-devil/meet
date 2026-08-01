@@ -463,9 +463,7 @@ declare
 begin
   if v_couple_id is null then raise exception 'Вы не в паре'; end if;
   if p_title is null or btrim(p_title) = '' then raise exception 'Укажите название'; end if;
-  if p_lat is null or p_lng is null then raise exception 'Отметьте место на карте'; end if;
-  if p_scheduled_at is null then raise exception 'Укажите дату и время'; end if;
-  if p_scheduled_at < now() - interval '1 minute' then
+  if p_scheduled_at is not null and p_scheduled_at < now() - interval '1 minute' then
     raise exception 'Время уже прошло, выберите будущее';
   end if;
   insert into public.tasks (couple_id, title, description, place_name, address, lat, lng, scheduled_at, created_by)
@@ -632,6 +630,23 @@ begin
   update public.agreements set status = 'cancelled', decided_at = now() where id = p_agreement_id;
   update public.tasks set updated_at = now() where id = v_agreement.task_id;
   return public.task_view(v_agreement.task_id);
+end
+$$;
+
+-- Отметить план пропущенным вручную (кнопка «Не пришёл»)
+create or replace function public.mark_task_missed(p_task_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_couple_id uuid := public.auth_couple_id();
+  v_task public.tasks;
+begin
+  select * into v_task from public.tasks where id = p_task_id and couple_id = v_couple_id;
+  if not found then raise exception 'Задача не найдена'; end if;
+  if v_task.status not in ('planned','in_progress') then raise exception 'Задача уже закрыта'; end if;
+  update public.tasks set status = 'missed', updated_at = now() where id = p_task_id;
+  return public.task_view(p_task_id);
 end
 $$;
 

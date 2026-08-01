@@ -17,6 +17,7 @@ vi.mock('../api.js', () => ({
     tasks: vi.fn(),
     stats: vi.fn(),
     myRequests: vi.fn(),
+    markMissed: vi.fn(),
   },
 }))
 
@@ -90,5 +91,25 @@ describe('App', () => {
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getByText('Пара'))
     await waitFor(() => expect(screen.getAllByText('Ваня').length).toBeGreaterThan(0))
+  })
+
+  it('shows no-map placeholder for a plan without a point', async () => {
+    api.tasks.mockResolvedValue([{ ...task, id: 2, title: 'Кофе у Ани', lat: null, lng: null }])
+    render(<App />)
+    await waitFor(() => expect(screen.getAllByText('Кофе у Ани').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getAllByText('Кофе у Ани')[0])
+    await waitFor(() => expect(screen.getByText(/Точка не выбрана/)).toBeInTheDocument())
+    expect(screen.queryByText('Показать на карте')).not.toBeInTheDocument()
+  })
+
+  it('marks a plan as missed', async () => {
+    api.markMissed.mockResolvedValue({ ...task, status: 'missed' })
+    render(<App />)
+    await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getAllByText('Ужин в кафе')[0])
+    await waitFor(() => expect(screen.getByText('Кто пришёл')).toBeInTheDocument())
+    await userEvent.click(screen.getByText(/Не пришёл/))
+    await userEvent.click(screen.getByText('Отметить пропущенным'))
+    await waitFor(() => expect(api.markMissed).toHaveBeenCalledWith(1))
   })
 })

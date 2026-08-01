@@ -84,20 +84,17 @@ export function AddTaskModal({ onClose }) {
   const submit = async () => {
     setError(null)
     if (!title.trim()) return setError('Дайте плану название')
-    if (!picked) return setError('Отметьте место на карте')
-    if (!datetime) return setError('Выберите дату и время')
-    const ts = new Date(datetime).getTime()
-    if (isNaN(ts)) return setError('Неверная дата')
+    if (datetime && isNaN(new Date(datetime).getTime())) return setError('Неверная дата')
     setBusy(true)
     try {
       await actions.createTask({
         title: title.trim(),
         description: description.trim(),
-        place_name: picked.place?.name || query.trim(),
-        address: picked.place?.address || '',
-        lat: picked.lat,
-        lng: picked.lng,
-        scheduled_at: ts,
+        place_name: picked?.place?.name || query.trim(),
+        address: picked?.place?.address || '',
+        lat: picked?.lat,
+        lng: picked?.lng,
+        scheduled_at: datetime ? new Date(datetime).getTime() : null,
       })
       actions.toast('План создан!', 'success')
       onClose()
@@ -152,11 +149,12 @@ export function AddTaskModal({ onClose }) {
           </div>
 
           <div className="map-picker" ref={mapEl} />
-          <p className="map-hint">👆 Коснитесь карты, чтобы выбрать точку встречи</p>
+          <p className="map-hint">👆 Коснитесь карты, чтобы выбрать точку встречи {picked && <span className="map-picked">✓ выбрана</span>}</p>
 
           <label className="field">
-            <span>Когда</span>
+            <span>Когда (не обязательно)</span>
             <input type="datetime-local" value={datetime} onChange={(e) => setDatetime(e.target.value)} />
+            <small className="field-hint">Оставьте пустым — план без времени</small>
           </label>
 
           {error && <div className="error-banner">{error}</div>}

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react'
 import { api, subscribeTasks, unsubscribeTasks, subscribeRequests, unsubscribeRequests, hasSession, clearToken } from './api.js'
 import { applyTheme, savedAccent, safeSet } from './lib/theme.js'
+import { notify } from './lib/notify.js'
 
 const StoreContext = createContext(null)
 
@@ -85,7 +86,16 @@ export function StoreProvider({ children }) {
       }
       if (event === 'task:delete') dispatch({ type: 'REMOVE_TASK', id: payload.id })
       if (event === 'couple:update') {
+        const prev = stateRef.current.couple
         dispatch({ type: 'SET_COUPLE', couple: payload })
+        if (prev) {
+          if (payload.bg && payload.bg !== prev.bg) {
+            notify('Фон приложения', 'Партнёр сменил обои', 'couple-bg')
+          }
+          if (payload.radius_m !== prev.radius_m || payload.window_min !== prev.window_min || payload.grace_min !== prev.grace_min) {
+            notify('Настройки встреч', 'Партнёр изменил настройки встреч', 'couple-settings')
+          }
+        }
         const me = payload.members.find((m) => m.id === stateRef.current.user?.id)
         if (me) applyTheme(me.theme, me.accent || savedAccent())
       }
@@ -140,7 +150,8 @@ export function StoreProvider({ children }) {
       const row = payload.new || {}
       if (payload.eventType === 'INSERT' && row.to_id === me && row.status === 'pending') {
         loadRequests()
-        showToast(dispatch, 'Вам отправили запрос на пару — посмотрите в Профиле', 'info')
+        showToast(dispatch, 'Вам отправили запрос на пару — посмотрите в разделе «Пара»', 'info')
+        notify('Запрос на пару', 'Вам отправили запрос — посмотрите в разделе «Пара»', 'couple-request')
       } else if (row.status === 'accepted') {
         refreshAfterCouple()
       } else {
@@ -312,6 +323,11 @@ export function StoreProvider({ children }) {
     rate: async (id, score, comment) => {
       const task = await api.rate(id, score, comment)
       dispatch({ type: 'UPSERT_TASK', task })
+    },
+    markMissed: async (id) => {
+      const task = await api.markMissed(id)
+      dispatch({ type: 'UPSERT_TASK', task })
+      return task
     },
     toast: (msg, type) => showToast(dispatch, msg, type),
     setBg: async (url) => {

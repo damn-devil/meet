@@ -9,40 +9,101 @@ import { Toast } from './components/Toast.jsx'
 import { Icon } from './components/Icon.jsx'
 import { Avatar } from './components/Avatar.jsx'
 import { useEffect, useRef } from 'react'
+import { notify } from './lib/notify.js'
 import './index.css'
 
 function useCompletionNotifications() {
   const { state, actions } = useStore()
   const seen = useRef({})
   const seenAgreements = useRef({})
+  const seenComments = useRef({})
+  const seenRatings = useRef({})
+  const seenCheckins = useRef({})
+  const booted = useRef(false)
+  const meId = state.user?.id
+  const partnerName = state.couple?.members?.find((m) => m.id !== meId)?.name || 'Партнёр'
+
   useEffect(() => {
     const current = {}
     const agreements = {}
+    const comments = {}
+    const ratings = {}
+    const checkins = {}
+    const isFirst = !booted.current
+
     state.tasks.forEach((t) => {
       current[t.id] = t.status
       const prev = seen.current[t.id]
-      if (prev && prev !== 'completed' && t.status === 'completed') {
-        actions.toast(`✅ Задача «${t.title}» выполнена!`, 'success')
-        try {
-          if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker?.ready) {
-            navigator.serviceWorker.ready.then((reg) => reg.showNotification(t.title, { body: 'Вы встретились!', tag: `task-${t.id}` }))
-          }
-        } catch {}
+
+      if (!isFirst && prev && prev !== t.status) {
+        if (t.status === 'completed') {
+          actions.toast(`✅ Задача «${t.title}» выполнена!`, 'success')
+          notify(t.title, 'Вы встретились!', `task-${t.id}`)
+        } else if (t.status === 'missed') {
+          actions.toast(`⏰ План «${t.title}» пропущен`, 'info')
+          notify(t.title, 'План пропущен — встреча не состоялась', `task-${t.id}`)
+        } else if (t.status === 'cancelled') {
+          actions.toast(`🗑 План «${t.title}» отменён`, 'info')
+          notify(t.title, 'План отменён', `task-${t.id}`)
+        }
       }
+
+      if (!isFirst && !prev && t.created_by !== meId) {
+        actions.toast(`📅 Новый план: «${t.title}»`, 'info')
+        notify('Новый план', t.title, `task-${t.id}`)
+      }
+
+      t.comments?.forEach((c) => {
+        comments[c.id] = true
+        if (!isFirst && c.user_id !== meId && !seenComments.current[c.id]) {
+          actions.toast(`💬 ${c.name}: ${c.text}`, 'info')
+          notify(c.name, c.text, `comment-${c.id}`)
+        }
+      })
+
+      t.ratings?.forEach((r) => {
+        ratings[r.id] = true
+        if (!isFirst && r.user_id !== meId && !seenRatings.current[r.id]) {
+          actions.toast(`⭐ Партнёр оценил «${t.title}»`, 'info')
+          notify('Новая оценка', `${t.title} — ${r.score} ★`, `rating-${r.id}`)
+        }
+      })
+
+      t.checkins?.forEach((k) => {
+        checkins[k.id] = true
+        if (!isFirst && k.user_id !== meId && !seenCheckins.current[k.id]) {
+          actions.toast(`📍 ${partnerName} на месте: «${t.title}»`, 'info')
+          notify('Кто-то пришёл', `${partnerName} уже на месте — «${t.title}»`, `checkin-${k.id}`)
+        }
+      })
+
       t.agreements?.forEach((a) => {
         agreements[`${t.id}:${a.id}`] = a.status
-        if (a.status === 'pending' && a.requested_by !== state.user?.id) {
+        if (!isFirst && a.requested_by !== meId) {
           const prevA = seenAgreements.current[`${t.id}:${a.id}`]
-          if (!prevA) {
+          if (a.status === 'pending' && !prevA) {
             const what = a.type === 'delete' ? 'удалить план' : 'перенести план'
             actions.toast(`💬 ${a.requester_name} предлагает ${what}: «${t.title}»`, 'info')
+            notify(a.requester_name, `предлагает ${what}: «${t.title}»`, `agree-${a.id}`)
+          } else if (prevA === 'pending' && a.status === 'approved') {
+            const what = a.type === 'delete' ? 'удалён' : 'перенесён'
+            actions.toast(`✅ План «${t.title}» ${what}`, 'success')
+            notify(t.title, `План ${what}`, `task-${t.id}`)
+          } else if (prevA === 'pending' && a.status === 'rejected') {
+            actions.toast(`❌ Запрос по «${t.title}» отклонён`, 'info')
+            notify(t.title, 'Запрос отклонён', `task-${t.id}`)
           }
         }
       })
     })
+
     seen.current = current
     seenAgreements.current = agreements
-  }, [state.tasks, actions, state.user])
+    seenComments.current = comments
+    seenRatings.current = ratings
+    seenCheckins.current = checkins
+    booted.current = true
+  }, [state.tasks, actions, meId, partnerName])
 }
 
 function AppInner() {

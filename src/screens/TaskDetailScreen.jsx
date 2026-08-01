@@ -14,14 +14,16 @@ export function TaskDetailScreen({ taskId }) {
   const [locResult, setLocResult] = useState(null)
   const [showReschedule, setShowReschedule] = useState(false)
   const [newTime, setNewTime] = useState('')
+  const [confirmMissed, setConfirmMissed] = useState(false)
   const [ratingModal, setRatingModal] = useState(false)
   const mapEl = useRef(null)
 
   const me = state.user
   const partner = state.couple?.members?.find((m) => m.id !== me?.id)
+  const hasPoint = task?.lat != null && task?.lng != null
 
   useEffect(() => {
-    if (!task || !mapEl.current) return
+    if (!task || !hasPoint || !mapEl.current) return
     let map
     ;(async () => {
       map = await createMap(mapEl.current, {
@@ -29,9 +31,7 @@ export function TaskDetailScreen({ taskId }) {
         zoom: 15,
         markerColor: '#6366f1',
       })
-      if (task.lat !== undefined && task.lng !== undefined) {
-        map.addMarker(task.lat, task.lng, { title: task.place_name || task.title })
-      }
+      map.addMarker(task.lat, task.lng, { title: task.place_name || task.title })
     })()
     return () => map?.destroy?.()
   }, [taskId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -131,6 +131,16 @@ export function TaskDetailScreen({ taskId }) {
     }
   }
 
+  const markMissed = async () => {
+    try {
+      await actions.markMissed(task.id)
+      actions.toast('План отмечен как пропущенный', 'info')
+      setConfirmMissed(false)
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    }
+  }
+
   const canAct = ['planned', 'in_progress'].includes(task.status)
 
   return (
@@ -167,7 +177,7 @@ export function TaskDetailScreen({ taskId }) {
           </div>
         </div>
 
-        {task.lat !== undefined && task.lng !== undefined && (
+        {hasPoint && (
           <button className="btn btn-soft btn-block show-map-btn" onClick={() => actions.focusOnMap(task.id)}>
             🗺 Показать на карте
           </button>
@@ -207,8 +217,17 @@ export function TaskDetailScreen({ taskId }) {
         )}
 
         {/* Map */}
-        <div className="detail-map" ref={mapEl} />
-        <p className="map-hint">{task.place_name || 'Место встречи'}</p>
+        {hasPoint ? (
+          <>
+            <div className="detail-map" ref={mapEl} />
+            <p className="map-hint">{task.place_name || 'Место встречи'}</p>
+          </>
+        ) : (
+          <div className="detail-map-empty glass">
+            <span className="detail-map-empty-icon">📍</span>
+            <p>Точка не выбрана — карта недоступна. Отметьте приход по кнопке.</p>
+          </div>
+        )}
 
         {/* Agreements */}
         {pendingAgreement && (
@@ -234,7 +253,17 @@ export function TaskDetailScreen({ taskId }) {
         {canAct && !pendingAgreement && (
           <div className="detail-actions">
             <button className="btn btn-soft" onClick={() => setShowReschedule((v) => !v)}>🕐 Перенести</button>
+            <button className="btn btn-soft" onClick={() => setConfirmMissed((v) => !v)}>😿 Не пришёл</button>
             <button className="btn btn-danger-soft" onClick={() => requestAgreement('delete')}>🗑 Удалить</button>
+          </div>
+        )}
+        {canAct && confirmMissed && (
+          <div className="reschedule-box glass">
+            <p className="field-hint">Отметить план как пропущенный? Встреча не состоялась — это будет видно обоим.</p>
+            <div className="agreement-actions">
+              <button className="btn btn-soft" onClick={() => setConfirmMissed(false)}>Отмена</button>
+              <button className="btn btn-danger" onClick={markMissed}>Отметить пропущенным</button>
+            </div>
           </div>
         )}
         {canAct && showReschedule && (

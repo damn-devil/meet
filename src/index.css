@@ -289,6 +289,15 @@ select {
   font-size: 24px;
   font-weight: 400;
 }
+.btn-sm {
+  padding: 8px 14px;
+  min-height: 36px;
+  font-size: 14px;
+  border-radius: 12px;
+}
+.btn-sm.btn-block {
+  width: 100%;
+}
 
 .icon-btn {
   width: 34px;
@@ -890,10 +899,12 @@ select {
 
 .detail-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 .detail-actions .btn {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .reschedule-box {
   padding: 14px;
@@ -907,6 +918,34 @@ select {
   border-radius: var(--radius-input);
   padding: 12px;
   font-size: 15px;
+}
+.reschedule-box .agreement-actions .btn {
+  flex: 1;
+}
+.detail-map-empty {
+  min-height: 160px;
+  padding: 22px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  border-radius: var(--radius-card);
+  border: 1px dashed var(--hairline);
+}
+.detail-map-empty-icon {
+  font-size: 30px;
+}
+.detail-map-empty p {
+  font-size: 14px;
+  color: var(--text2);
+  line-height: 1.4;
+  margin: 0;
+}
+.map-picked {
+  color: var(--green);
+  font-weight: 700;
 }
 
 /* ---------- Comments ---------- */
