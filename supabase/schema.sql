@@ -33,8 +33,11 @@ create table if not exists public.couples (
   radius_m int not null default 150,
   window_min int not null default 30,
   grace_min int not null default 15,
+  bg text not null default '',
   created_at timestamptz not null default now()
 );
+
+alter table public.couples add column if not exists bg text default '';
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -190,6 +193,7 @@ as $$
     'radius_m', c.radius_m,
     'window_min', c.window_min,
     'grace_min', c.grace_min,
+    'bg', c.bg,
     'members', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', p.id, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url,
@@ -294,6 +298,9 @@ declare
   v_count int;
   v_code text;
 begin
+  if public.auth_couple_id() is not null then
+    raise exception 'Вы уже в паре. Чтобы сменить пару, напишите в поддержку';
+  end if;
   if p_invite is not null and btrim(p_invite) <> '' then
     select * into v_couple from public.couples where invite_code = upper(btrim(p_invite));
     if not found then
@@ -600,7 +607,8 @@ end
 $$;
 
 create or replace function public.update_couple_settings(
-  p_radius_m int default null, p_window_min int default null, p_grace_min int default null
+  p_radius_m int default null, p_window_min int default null, p_grace_min int default null,
+  p_bg text default null
 )
 returns jsonb
 language sql security definer set search_path = public
@@ -608,7 +616,8 @@ as $$
   update public.couples set
     radius_m = case when p_radius_m is not null then greatest(50, least(5000, p_radius_m)) else radius_m end,
     window_min = case when p_window_min is not null then greatest(5, least(240, p_window_min)) else window_min end,
-    grace_min = case when p_grace_min is not null then greatest(0, least(240, p_grace_min)) else grace_min end
+    grace_min = case when p_grace_min is not null then greatest(0, least(240, p_grace_min)) else grace_min end,
+    bg = case when p_bg is not null then btrim(p_bg) else bg end
   where id = public.auth_couple_id()
   returning public.couple_view(id)
 $$;

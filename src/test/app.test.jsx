@@ -67,12 +67,11 @@ describe('App', () => {
     expect(screen.getByText('Кто пришёл')).toBeInTheDocument()
   })
 
-  it('navigates to map tab and shows mascot cat', async () => {
+  it('navigates to map tab', async () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getByText('Карта'))
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Карта' })).toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'Погладить котика' })).toBeInTheDocument()
   })
 
   it('navigates to profile tab and shows couple info', async () => {

@@ -127,7 +127,9 @@ export const api = {
       p_radius_m: body.radius_m,
       p_window_min: body.window_min,
       p_grace_min: body.grace_min,
+      p_bg: body.bg,
     }),
+  joinCouple: (code) => rpc('join_or_create_couple', { p_invite: code || null }),
   stats: () => rpc('get_stats'),
 }
 

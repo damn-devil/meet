@@ -5,7 +5,6 @@ import { MapScreen } from './screens/MapScreen.jsx'
 import { ProfileScreen } from './screens/ProfileScreen.jsx'
 import { TaskDetailScreen } from './screens/TaskDetailScreen.jsx'
 import { Toast } from './components/Toast.jsx'
-import { CatMascot } from './components/CatMascot.jsx'
 import { Icon } from './components/Icon.jsx'
 import { useEffect, useRef } from 'react'
 import './index.css'
@@ -86,7 +85,6 @@ function AppInner() {
   return (
     <div className={`app${bg ? ' has-bg' : ''}`} style={bg ? { '--bg-img': `url("${bg}")` } : undefined}>
       {screen}
-      <CatMascot />
       <TabBar />
       <Toast />
     </div>

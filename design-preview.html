@@ -128,8 +128,6 @@
       }
       .demo-pin span { position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; transform: rotate(45deg); font-size: 13px; }
 
-      /* пиксельный котик-маскот для превью */
-
       .detail-scroll { padding-bottom: 24px; }
       .hide { display: none !important; }
       .screen.demo-anim { animation: slidein 0.28s var(--ease); }
@@ -145,15 +143,6 @@
     </div>
 
     <div class="app" id="appRoot">
-
-          <!-- Котик-маскот: бегает по верху всех экранов -->
-          <div class="cat-mascot" id="demoCat">
-            <div class="cat-bubbles" id="demoBubbles"></div>
-            <div class="cat-spr walk flip">
-              <img src="./src/assets/cat/walk.png" alt="" draggable="false" style="width:416px;animation:catFrame 0.5s steps(8) infinite" />
-            </div>
-            <span class="cat-mood">🐱</span>
-          </div>
 
           <!-- ===== ЭКРАН ВХОДА ===== -->
           <section class="screen auth-screen demo-anim" id="authScreen" style="min-height:100vh">
@@ -417,6 +406,17 @@
               </div>
             </div>
 
+            <div class="couple-card glass">
+              <div class="invite-box">
+                <h3 class="card-title">Присоединиться к паре</h3>
+                <p>Введите код приглашения второго человека:</p>
+                <div class="invite-join">
+                  <input placeholder="КОД123" maxlength="6" />
+                  <button class="btn btn-primary">В пару</button>
+                </div>
+              </div>
+            </div>
+
             <div class="settings-card glass">
               <h3 class="card-title">Настройки</h3>
               <div class="settings-panel">
@@ -450,6 +450,7 @@
                 </div>
                 <div class="setting-group">
                   <span class="setting-label">Фон из фото</span>
+                  <p class="bg-hint">Своё фото в качестве фона приложения — его увидит и ваш партнёр.</p>
                   <div class="bg-actions">
                     <label class="btn btn-soft">📷 Загрузить фото
                       <input type="file" accept="image/*" id="demoBgInput" style="display:none" />
@@ -544,9 +545,8 @@
       <div class="toast hide" id="toast"></div>
 
     <p class="demo-hint">
-      Офлайн-превью дизайна. Котик-маскот бегает по верху и показывает настроение
-      парящими эмодзи — кликните на него. Свой цвет акцента и фон из фото
-      сохраняются между открытиями.
+      Офлайн-превью дизайна: экраны входа, планов, деталей, карты, профиля, нижняя
+      панель «Новый план». Свой цвет акцента и фон из фото сохраняются между открытиями.
     </p>
 
     <script>
@@ -654,43 +654,6 @@
           authToggle.textContent = 'Вход'
         }
       })
-
-      // ---- котик-маскот: бегает по верху ----
-      const demoCat = document.getElementById('demoCat')
-      const demoBubbles = document.getElementById('demoBubbles')
-      let catX = 0
-      let catDir = 1
-      let catLast = performance.now()
-      const catMoods = ['😸', '🐱', '😿']
-      let catMood = 0
-      const catMoodEl = demoCat.querySelector('.cat-mood')
-      function catBubble(e) {
-        const span = document.createElement('span')
-        span.className = 'cat-bubble'
-        span.textContent = e
-        demoBubbles.appendChild(span)
-        span.addEventListener('animationend', () => span.remove())
-      }
-      function stepCat(now) {
-        const dt = Math.min((now - catLast) / 1000, 0.1)
-        catLast = now
-        const max = Math.max(40, window.innerWidth - 90)
-        catX += catDir * 55 * dt
-        if (catX <= 0) { catX = 0; catDir = 1; demoCat.querySelector('.cat-spr').classList.add('flip') }
-        else if (catX >= max) { catX = max; catDir = -1; demoCat.querySelector('.cat-spr').classList.remove('flip') }
-        demoCat.style.transform = `translateX(${catX}px)`
-        requestAnimationFrame(stepCat)
-      }
-      requestAnimationFrame(stepCat)
-      demoCat.addEventListener('click', () => {
-        catBubble(['💛', '❤️'][Math.floor(Math.random() * 2)])
-        demoToast('Мяу! 🐾')
-      })
-      setInterval(() => {
-        catMood = (catMood + 1) % catMoods.length
-        catMoodEl.textContent = catMoods[catMood]
-        catBubble(catMoods[catMood])
-      }, 6000)
 
       // ---- фон из фото ----
       function applyDemoBg(url) {

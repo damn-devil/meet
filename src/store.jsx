@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react'
 import { api, subscribeTasks, unsubscribeTasks, hasSession, clearToken } from './api.js'
-import { applyTheme, savedAccent, safeGet, safeSet } from './lib/theme.js'
+import { applyTheme, savedAccent } from './lib/theme.js'
 
 const StoreContext = createContext(null)
 
@@ -14,13 +14,13 @@ const initialState = {
   toast: null,
   loading: true,
   bootError: null,
-  bg: safeGet('together_bg') || '',
+  bg: '',
 }
 
 function reducer(state, action) {
   switch (action.type) {
     case 'BOOT':
-      return { ...state, user: action.user, couple: action.couple, loading: false, bootError: null }
+      return { ...state, user: action.user, couple: action.couple, loading: false, bootError: null, bg: action.couple?.bg || '' }
     case 'BOOT_ERR':
       return { ...state, loading: false, bootError: action.error }
     case 'SET_TASKS':
@@ -35,7 +35,7 @@ function reducer(state, action) {
     case 'REMOVE_TASK':
       return { ...state, tasks: state.tasks.filter((t) => t.id !== action.id) }
     case 'SET_COUPLE':
-      return { ...state, couple: action.couple, user: action.couple?.members?.find((m) => m.id === state.user?.id) || state.user }
+      return { ...state, couple: action.couple, bg: action.couple?.bg || '', user: action.couple?.members?.find((m) => m.id === state.user?.id) || state.user }
     case 'SET_USER':
       return { ...state, user: action.user }
     case 'SET_STATS':
@@ -171,6 +171,14 @@ export function StoreProvider({ children }) {
       dispatch({ type: 'SET_COUPLE', couple })
       return couple
     },
+    joinCouple: async (code) => {
+      const couple = await api.joinCouple(code)
+      if (couple) {
+        dispatch({ type: 'SET_COUPLE', couple })
+        showToast(dispatch, 'Вы в паре!', 'success')
+      }
+      return couple
+    },
     createTask: async (body) => {
       const task = await api.createTask(body)
       dispatch({ type: 'UPSERT_TASK', task })
@@ -206,9 +214,13 @@ export function StoreProvider({ children }) {
       dispatch({ type: 'UPSERT_TASK', task })
     },
     toast: (msg, type) => showToast(dispatch, msg, type),
-    setBg: (url) => {
-      safeSet('together_bg', url)
-      dispatch({ type: 'SET_BG', bg: url })
+    setBg: async (url) => {
+      if (state.couple) {
+        await api.updateCouple({ bg: url })
+        dispatch({ type: 'SET_BG', bg: url })
+      } else {
+        dispatch({ type: 'SET_BG', bg: url })
+      }
     },
   }
 

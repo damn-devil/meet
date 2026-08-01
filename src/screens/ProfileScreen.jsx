@@ -5,7 +5,6 @@ import { applyTheme, safeGet, safeSet, savedAccent } from '../lib/theme.js'
 import { telegramUrl, imessageUrl, hasAnyContact } from '../lib/contacts.js'
 import { Icon } from '../components/Icon.jsx'
 import { Avatar } from '../components/Avatar.jsx'
-import { catHappiness } from '../lib/catmood.js'
 
 export function ProfileScreen() {
   const { state, actions } = useStore()
@@ -55,6 +54,22 @@ export function ProfileScreen() {
       actions.toast('Код скопирован', 'success')
     } catch {
       actions.toast(state.couple.invite_code)
+    }
+  }
+
+  const [inviteInput, setInviteInput] = useState('')
+  const [joining, setJoining] = useState(false)
+  const joinByCode = async () => {
+    const code = inviteInput.trim()
+    if (!code) return
+    setJoining(true)
+    try {
+      await actions.joinCouple(code)
+      setInviteInput('')
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    } finally {
+      setJoining(false)
     }
   }
 
@@ -112,56 +127,71 @@ export function ProfileScreen() {
 
       {/* Couple card */}
       <div className="couple-card glass">
-        <h3 className="card-title">Ваша пара</h3>
-        <div className="couple-row">
-          <div className="couple-member">
-            <Avatar url={me?.avatar_url} emoji={me?.avatar} size="couple" alt={me?.name} />
-            <span className="couple-name">{me?.name} <em>вы</em></span>
-          </div>
-          <div className="couple-heart">❤</div>
-          <div className="couple-member">
-            <Avatar url={partner?.avatar_url} emoji={partner?.avatar || '❓'} size="couple" alt={partner?.name} />
-            <span className="couple-name">{partner?.name || 'Ждём второго'}</span>
-          </div>
-        </div>
-        {!partner && (
+        {!state.couple ? (
           <div className="invite-box">
-            <p>Пригласите партнёра по коду:</p>
-            <div className="invite-code">
-              <strong>{state.couple?.invite_code}</strong>
-              <button className="btn btn-soft" onClick={copyCode}>Копировать</button>
+            <h3 className="card-title">Присоединиться к паре</h3>
+            <p>Введите код приглашения второго человека:</p>
+            <div className="invite-join">
+              <input
+                value={inviteInput}
+                onChange={(e) => setInviteInput(e.target.value.toUpperCase())}
+                placeholder="КОД123"
+                maxLength={6}
+                autoCapitalize="characters"
+                autoCorrect="off"
+              />
+              <button className="btn btn-primary" disabled={joining || !inviteInput.trim()} onClick={joinByCode}>
+                {joining ? 'Присоединение…' : 'В пару'}
+              </button>
             </div>
           </div>
-        )}
-        {partner && (
-          <div className="contact-actions">
-            {telegramUrl(partner.telegram) && (
-              <a className="contact-btn tg" href={telegramUrl(partner.telegram)} target="_blank" rel="noopener noreferrer">
-                <Icon name="send" strokeWidth={2} /> Telegram
-              </a>
+        ) : (
+          <>
+            <h3 className="card-title">Ваша пара</h3>
+            <div className="couple-row">
+              <div className="couple-member">
+                <Avatar url={me?.avatar_url} emoji={me?.avatar} size="couple" alt={me?.name} />
+                <span className="couple-name">{me?.name} <em>вы</em></span>
+              </div>
+              <div className="couple-heart">❤</div>
+              <div className="couple-member">
+                <Avatar url={partner?.avatar_url} emoji={partner?.avatar || '❓'} size="couple" alt={partner?.name} />
+                <span className="couple-name">{partner?.name || 'Ждём второго'}</span>
+              </div>
+            </div>
+            {!partner && (
+              <div className="invite-box">
+                <p>Пригласите партнёра по коду:</p>
+                <div className="invite-code">
+                  <strong>{state.couple?.invite_code}</strong>
+                  <button className="btn btn-soft" onClick={copyCode}>Копировать</button>
+                </div>
+              </div>
             )}
-            {imessageUrl(partner.imessage) && (
-              <a className="contact-btn im" href={imessageUrl(partner.imessage)}>
-                <Icon name="imessage" strokeWidth={2} /> iMessage
-              </a>
+            {partner && (
+              <div className="contact-actions">
+                {telegramUrl(partner.telegram) && (
+                  <a className="contact-btn tg" href={telegramUrl(partner.telegram)} target="_blank" rel="noopener noreferrer">
+                    <Icon name="send" strokeWidth={2} /> Telegram
+                  </a>
+                )}
+                {imessageUrl(partner.imessage) && (
+                  <a className="contact-btn im" href={imessageUrl(partner.imessage)}>
+                    <Icon name="imessage" strokeWidth={2} /> iMessage
+                  </a>
+                )}
+                {!hasAnyContact(partner) && (
+                  <span className="contact-empty">Партнёр пока не указал контакты</span>
+                )}
+              </div>
             )}
-            {!hasAnyContact(partner) && (
-              <span className="contact-empty">Партнёр пока не указал контакты</span>
-            )}
-          </div>
+          </>
         )}
       </div>
 
       {/* Stats */}
-      <div className="happiness-card glass">
-        <div className="happiness-head">
-          <span>Котик пары</span>
-          <strong>{catHappiness(state.stats)}%</strong>
-        </div>
-        <div className="happiness-bar">
-          <div className="happiness-fill happy" style={{ width: `${catHappiness(state.stats)}%` }} />
-        </div>
-        <p className="happiness-text">Котик питается вашими встречами: завершённые поднимают настроение (+6), пропущенные — расстраивают (−12).</p>
+      <div className="settings-card glass">
+        <h3 className="card-title">Статистика</h3>
         <div className="stats-grid">
           <div className="stat-card glass">
             <span className="stat-num">{state.stats.completed}</span>
@@ -238,7 +268,7 @@ function SettingsPanel() {
           canvas.width = Math.round(img.width * scale)
           canvas.height = Math.round(img.height * scale)
           canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-          actions.setBg(canvas.toDataURL('image/jpeg', 0.82))
+          actions.setBg(canvas.toDataURL('image/jpeg', 0.82)).catch(() => actions.toast('Не удалось сохранить фон', 'error'))
           actions.toast('Фон обновлён', 'success')
         } catch {
           actions.toast('Не удалось обработать фото', 'error')
@@ -251,7 +281,7 @@ function SettingsPanel() {
   }
 
   const clearBg = () => {
-    actions.setBg('')
+    actions.setBg('').catch(() => actions.toast('Не удалось сбросить фон', 'error'))
     actions.toast('Фон сброшен')
   }
 
@@ -310,7 +340,7 @@ function SettingsPanel() {
 
       <div className="setting-group">
         <span className="setting-label">Фон из фото</span>
-        <p className="bg-hint">Своё фото в качестве фона приложения. Стекло и котик останутся поверх.</p>
+        <p className="bg-hint">Своё фото в качестве фона приложения — его увидит и ваш партнёр.</p>
         <div className="bg-actions">
           <label className="btn btn-soft">
             {state.bg ? '📷 Сменить фото' : '📷 Загрузить фото'}
