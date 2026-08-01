@@ -117,9 +117,12 @@ select {
 
 /* Свой фон из фотографии: фото + лёгкий тон темы для читаемости */
 .app.has-bg::before {
-  background:
-    color-mix(in srgb, var(--bg) 52%, transparent),
-    var(--bg-img, none) center / cover no-repeat;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--bg) 55%, transparent), color-mix(in srgb, var(--bg) 55%, transparent)),
+    var(--bg-img, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 .app.has-bg::after {
   opacity: 0.12;
@@ -218,7 +221,7 @@ select {
   justify-content: space-between;
   gap: 12px;
   margin: -20px -16px 18px;
-  padding: 20px 16px 14px;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 16px 14px;
   background: color-mix(in srgb, var(--bg) 72%, transparent);
   backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
@@ -675,7 +678,7 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 16px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px;
   position: sticky;
   top: 0;
   background: color-mix(in srgb, var(--bg) 72%, transparent);
@@ -996,7 +999,7 @@ select {
   left: 0;
   right: 0;
   z-index: 5;
-  padding: 14px 16px 0;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
