@@ -84,6 +84,17 @@ export const api = {
     return api.me()
   },
   deleteAccount: () => rpc('delete_account'),
+  deleteAvatarFiles: async () => {
+    try {
+      const client = supabaseReady()
+      const { data: session } = await client.auth.getSession()
+      const uid = session?.session?.user?.id
+      if (!uid) return
+      const { data: files } = await client.storage.from('avatars').list(uid, { limit: 100 })
+      const paths = (files || []).filter((f) => f.name).map((f) => `${uid}/${f.name}`)
+      if (paths.length) await client.storage.from('avatars').remove(paths)
+    } catch {}
+  },
   uploadAvatar: async (file, ext = 'jpg') => {
     const client = supabaseReady()
     const { data: session } = await client.auth.getSession()

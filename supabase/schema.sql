@@ -427,7 +427,6 @@ begin
   if v_couple_id is not null then
     delete from public.couples where id = v_couple_id;
   end if;
-  delete from storage.objects where bucket_id = 'avatars' and owner = auth.uid();
   delete from auth.users where id = auth.uid();
 end
 $$;

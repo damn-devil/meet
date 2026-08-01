@@ -213,6 +213,7 @@ export function StoreProvider({ children }) {
       dispatch({ type: 'LOGOUT' })
     },
     deleteAccount: async () => {
+      await api.deleteAvatarFiles()
       await api.deleteAccount()
       try {
         await api.logout()
