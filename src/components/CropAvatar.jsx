@@ -31,6 +31,15 @@ export function CropAvatar({ src, onCancel, onSave }) {
     return { x: Math.max(-maxX, Math.min(maxX, p.x)), y: Math.max(-maxY, Math.min(maxY, p.y)) }
   }
 
+  const onZoom = (e) => {
+    const z = parseFloat(e.target.value)
+    setZoom(z)
+    if (!base) return
+    const maxX = Math.max(0, (base.w * z - BOX) / 2)
+    const maxY = Math.max(0, (base.h * z - BOX) / 2)
+    setPos({ x: Math.max(-maxX, Math.min(maxX, pos.x)), y: Math.max(-maxY, Math.min(maxY, pos.y)) })
+  }
+
   const onDown = (e) => {
     e.preventDefault()
     dragRef.current = { startX: e.clientX, startY: e.clientY, px: pos.x, py: pos.y }
@@ -84,6 +93,8 @@ export function CropAvatar({ src, onCancel, onSave }) {
                 alt=""
                 draggable="false"
                 style={{
+                  left: BOX / 2 - base.w / 2,
+                  top: BOX / 2 - base.h / 2,
                   width: base.w,
                   height: base.h,
                   transform: `translate(${pos.x}px, ${pos.y}px) scale(${zoom})`,
@@ -99,7 +110,7 @@ export function CropAvatar({ src, onCancel, onSave }) {
                 max="3"
                 step="0.01"
                 value={zoom}
-                onChange={(e) => setZoom(parseFloat(e.target.value))}
+                onChange={onZoom}
                 aria-label="Масштаб фото"
               />
               <span>+</span>

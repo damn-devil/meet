@@ -490,6 +490,17 @@
                 <button class="btn btn-danger-soft btn-block" onclick="demoToast('Вы вышли')">Выйти</button>
               </div>
             </div>
+
+            <div class="danger-zone">
+              <button class="btn btn-danger-soft btn-block" onclick="document.getElementById('demoDelete').classList.toggle('hide')">Удалить аккаунт</button>
+              <div class="danger-confirm glass hide" id="demoDelete">
+                <p>Удалить аккаунт и все данные без возможности восстановить?</p>
+                <div class="danger-actions">
+                  <button class="btn btn-soft" onclick="document.getElementById('demoDelete').classList.add('hide')">Отмена</button>
+                  <button class="btn btn-danger" onclick="document.getElementById('demoDelete').classList.add('hide');demoToast('Аккаунт удалён','success')">Да, удалить</button>
+                </div>
+              </div>
+            </div>
           </section>
 
           <!-- ===== НИЖНЯЯ НАВИГАЦИЯ ===== -->

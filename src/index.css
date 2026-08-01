@@ -1845,15 +1845,10 @@ select {
 }
 .crop-box img {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  margin-left: -50%;
-  margin-top: -50%;
-  object-fit: cover;
+  max-width: none;
   user-select: none;
   -webkit-user-drag: none;
   will-change: transform;
-  max-width: none;
 }
 .crop-zoom {
   display: flex;
@@ -1881,5 +1876,53 @@ select {
   margin-top: 16px;
 }
 .crop-actions .btn {
+  flex: 1;
+}
+
+/* ---------- Все прозрачные элементы — всегда с размытием ---------- */
+.task-card,
+.error-card,
+.segmented,
+.segmented button.active,
+.field > input,
+.chip,
+.boot-paw,
+.icon-btn,
+.bg-hint,
+.detail-place,
+.reschedule-box input,
+.comment-input input,
+.locate-btn,
+.avatar-opt,
+.invite-join input,
+.search-row input,
+.setting-group input[type='range'] {
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.15);
+}
+
+/* ---------- Удаление аккаунта ---------- */
+.danger-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+.danger-confirm {
+  padding: 16px;
+  border-radius: var(--radius-card);
+  animation: fadein 0.2s ease;
+}
+.danger-confirm p {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text2);
+  margin-bottom: 12px;
+}
+.danger-actions {
+  display: flex;
+  gap: 8px;
+}
+.danger-actions .btn {
   flex: 1;
 }

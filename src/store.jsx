@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react'
 import { api, subscribeTasks, unsubscribeTasks, subscribeRequests, unsubscribeRequests, hasSession, clearToken } from './api.js'
-import { applyTheme, savedAccent } from './lib/theme.js'
+import { applyTheme, savedAccent, safeSet } from './lib/theme.js'
 
 const StoreContext = createContext(null)
 
@@ -87,9 +87,15 @@ export function StoreProvider({ children }) {
       if (event === 'couple:update') {
         dispatch({ type: 'SET_COUPLE', couple: payload })
         const me = payload.members.find((m) => m.id === stateRef.current.user?.id)
-        if (me) applyTheme(me.theme, savedAccent())
+        if (me) applyTheme(me.theme, me.accent || savedAccent())
       }
     })
+  }
+
+  const syncLocalPrefs = (user) => {
+    if (!user) return
+    safeSet('together_accent', user.accent || '')
+    safeSet('together_autocheck', user.autocheck ? 'on' : 'off')
   }
 
   const refreshStats = async () => {
@@ -154,6 +160,7 @@ export function StoreProvider({ children }) {
       try {
         const data = await api.me()
         if (cancelled) return
+        syncLocalPrefs(data.user)
         dispatch({ type: 'BOOT', user: data.user, couple: data.couple })
         await loadAll(data.couple?.id)
         await loadRequests()
@@ -180,6 +187,7 @@ export function StoreProvider({ children }) {
   const actions = {
     login: async (email, password) => {
       const data = await api.login({ email, password })
+      syncLocalPrefs(data.user)
       dispatch({ type: 'BOOT', user: data.user, couple: data.couple })
       await loadAll(data.couple?.id)
       await loadRequests()
@@ -188,6 +196,7 @@ export function StoreProvider({ children }) {
     },
     register: async (name, email, password) => {
       const data = await api.register({ name, email, password })
+      syncLocalPrefs(data.user)
       dispatch({ type: 'BOOT', user: data.user, couple: data.couple })
       await loadAll(data.couple?.id)
       await loadRequests()
@@ -195,6 +204,16 @@ export function StoreProvider({ children }) {
       return data
     },
     logout: async () => {
+      try {
+        await api.logout()
+      } catch {}
+      unsubscribeTasks()
+      unsubscribeRequests()
+      coupleIdRef.current = null
+      dispatch({ type: 'LOGOUT' })
+    },
+    deleteAccount: async () => {
+      await api.deleteAccount()
       try {
         await api.logout()
       } catch {}
@@ -211,10 +230,11 @@ export function StoreProvider({ children }) {
     focusOnMap: (id) => dispatch({ type: 'MAP_FOCUS', id }),
     updateMe: async (body) => {
       const data = await api.updateMe(body)
+      syncLocalPrefs(data.user)
       dispatch({ type: 'SET_USER', user: data.user })
       dispatch({ type: 'SET_COUPLE', couple: data.couple })
       const me = data.couple?.members?.find((m) => m.id === data.user?.id)
-      if (me) applyTheme(me.theme, savedAccent())
+      if (me) applyTheme(me.theme, me.accent || savedAccent())
       return data
     },
     uploadAvatar: (file, ext) => api.uploadAvatar(file, ext),
@@ -305,6 +325,6 @@ export function useThemeInit() {
   const { state } = useStore()
   useEffect(() => {
     const theme = state.user?.theme || 'auto'
-    applyTheme(theme, savedAccent())
+    applyTheme(theme, state.user?.accent || savedAccent())
   }, [state.user])
 }

@@ -46,6 +46,8 @@ create table if not exists public.profiles (
   avatar_url text default '',
   bio text default '',
   theme text not null default 'auto',
+  accent text not null default '',
+  autocheck boolean not null default true,
   telegram text default '',
   imessage text default '',
   couple_id uuid references public.couples(id) on delete set null,
@@ -55,6 +57,8 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists telegram text default '';
 alter table public.profiles add column if not exists imessage text default '';
 alter table public.profiles add column if not exists avatar_url text default '';
+alter table public.profiles add column if not exists accent text default '';
+alter table public.profiles add column if not exists autocheck boolean default true;
 
 create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
@@ -198,6 +202,7 @@ as $$
   select jsonb_build_object(
     'id', p.id, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url,
     'bio', p.bio, 'theme', p.theme,
+    'accent', p.accent, 'autocheck', p.autocheck,
     'telegram', p.telegram, 'imessage', p.imessage
   )
   from public.profiles p where p.id = p_id
@@ -218,6 +223,7 @@ as $$
       select jsonb_agg(jsonb_build_object(
         'id', p.id, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url,
         'bio', p.bio, 'theme', p.theme,
+        'accent', p.accent, 'autocheck', p.autocheck,
         'telegram', p.telegram, 'imessage', p.imessage
       ) order by p.created_at)
       from public.profiles p where p.couple_id = c.id
@@ -358,10 +364,15 @@ as $$
   returning public.profile_view(id)
 $$;
 
+-- Убираем старую сигнатуру без p_accent/p_autocheck, иначе при вызове с частью
+-- аргументов Postgres не сможет выбрать между перегрузками.
+drop function if exists public.update_profile(text, text, text, text, text, text, text);
+
 create or replace function public.update_profile(
   p_name text default null, p_avatar text default null,
   p_avatar_url text default null,
   p_bio text default null, p_theme text default null,
+  p_accent text default null, p_autocheck boolean default null,
   p_telegram text default null, p_imessage text default null
 )
 returns jsonb
@@ -373,6 +384,8 @@ as $$
     avatar_url = coalesce(p_avatar_url, avatar_url),
     bio = coalesce(p_bio, bio),
     theme = coalesce(p_theme, theme),
+    accent = coalesce(p_accent, accent),
+    autocheck = case when p_autocheck is not null then p_autocheck else autocheck end,
     telegram = coalesce(btrim(p_telegram), telegram),
     imessage = coalesce(btrim(p_imessage), imessage)
   where id = auth.uid()
@@ -399,6 +412,24 @@ as $$
   select public.task_view(t.id)
   from public.tasks t
   where t.id = p_task_id and t.couple_id = public.auth_couple_id()
+$$;
+
+-- Удаление аккаунта: пару, планы и данные партнёра не задевает,
+-- у партнёра couple_id обнуляется, его профиль и переписка остаются.
+create or replace function public.delete_account()
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_couple_id uuid := public.auth_couple_id();
+begin
+  delete from public.couple_requests where from_id = auth.uid() or to_id = auth.uid();
+  if v_couple_id is not null then
+    delete from public.couples where id = v_couple_id;
+  end if;
+  delete from storage.objects where bucket_id = 'avatars' and owner = auth.uid();
+  delete from auth.users where id = auth.uid();
+end
 $$;
 
 create or replace function public.get_stats()

@@ -30,8 +30,22 @@ export function ProfileScreen() {
   const [cropSrc, setCropSrc] = useState(null)
   const [telegram, setTelegram] = useState(me?.telegram || '')
   const [imessage, setImessage] = useState(me?.imessage || '')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const avatars = ['🐶', '🐼', '🦊', '🐸', '🐰', '🦁', '🐯', '🐹', '🐨']
+
+  const deleteAccount = async () => {
+    setDeleting(true)
+    try {
+      await actions.deleteAccount()
+      location.reload()
+    } catch (e) {
+      actions.toast(e.message, 'error')
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
+  }
 
   const saveProfile = async () => {
     try {
@@ -186,6 +200,23 @@ export function ProfileScreen() {
         </button>
       </div>
 
+      <div className="danger-zone">
+        <button className="btn btn-danger-soft btn-block" onClick={() => setConfirmDelete(true)}>
+          Удалить аккаунт
+        </button>
+        {confirmDelete && (
+          <div className="danger-confirm glass">
+            <p>Удалить аккаунт и все данные без возможности восстановить?</p>
+            <div className="danger-actions">
+              <button className="btn btn-soft" onClick={() => setConfirmDelete(false)}>Отмена</button>
+              <button className="btn btn-danger" onClick={deleteAccount} disabled={deleting}>
+                {deleting ? 'Удаляем…' : 'Да, удалить'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {cropSrc && <CropAvatar src={cropSrc} onCancel={() => setCropSrc(null)} onSave={saveCroppedAvatar} />}
     </div>
   )
@@ -273,6 +304,7 @@ function SettingsPanel() {
     const hex = accentValue(accent)
     applyTheme(me?.theme || 'auto', hex)
     safeSet('together_accent', hex)
+    actions.updateMe({ accent: hex }).catch(() => actions.toast('Не удалось сохранить цвет', 'error'))
   }
 
   const uploadBg = (e) => {
@@ -481,6 +513,7 @@ function SettingsPanel() {
             const v = e.target.checked
             setAutoCheck(v)
             safeSet('together_autocheck', v ? 'on' : 'off')
+            actions.updateMe({ autocheck: v }).catch(() => actions.toast('Не удалось сохранить настройку', 'error'))
             actions.toast(v ? 'Автопроверка включена' : 'Автопроверка выключена')
           }}
         />

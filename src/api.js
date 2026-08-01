@@ -76,11 +76,14 @@ export const api = {
       p_avatar_url: body.avatar_url,
       p_bio: body.bio,
       p_theme: body.theme,
+      p_accent: body.accent,
+      p_autocheck: body.autocheck,
       p_telegram: body.telegram,
       p_imessage: body.imessage,
     })
     return api.me()
   },
+  deleteAccount: () => rpc('delete_account'),
   uploadAvatar: async (file, ext = 'jpg') => {
     const client = supabaseReady()
     const { data: session } = await client.auth.getSession()

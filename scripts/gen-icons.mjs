@@ -1,134 +1,142 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
-import zlib from 'node:zlib'
+// Генерирует PWA-иконки (PNG) без внешних зависимостей:
+// iOS-style «квадрат со скруглением», вертикальный градиент,
+// белое сердце с лёгкой тенью и маленькое розовое сердце рядом (пара).
+import { deflateSync } from 'node:zlib'
+import { writeFileSync, mkdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-mkdirSync('public/icons', { recursive: true })
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'icons')
 
-function makePng(width, height, pixelFn) {
-  // raw RGBA scanlines with filter byte 0
-  const stride = width * 4
-  const raw = Buffer.alloc((stride + 1) * height)
-  for (let y = 0; y < height; y++) {
-    const rowStart = y * (stride + 1)
-    raw[rowStart] = 0
-    for (let x = 0; x < width; x++) {
-      const [r, g, b, a] = pixelFn(x, y)
-      const i = rowStart + 1 + x * 4
-      raw[i] = r
-      raw[i + 1] = g
-      raw[i + 2] = b
-      raw[i + 3] = a
+// ---------- PNG-энкодер ----------
+function crc32(buf) {
+  const table = crc32.table ||= (() => {
+    const t = new Uint32Array(256)
+    for (let n = 0; n < 256; n++) {
+      let c = n
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+      t[n] = c >>> 0
     }
-  }
+    return t
+  })()
+  let crc = 0xffffffff
+  for (let i = 0; i < buf.length; i++) crc = table[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8)
+  return (crc ^ 0xffffffff) >>> 0
+}
 
-  function chunk(type, data) {
-    const len = Buffer.alloc(4)
-    len.writeUInt32BE(data.length)
-    const typeBuf = Buffer.from(type, 'ascii')
-    const crcBuf = Buffer.concat([typeBuf, data])
-    const crc = Buffer.alloc(4)
-    crc.writeUInt32BE(crc32(crcBuf) >>> 0)
-    return Buffer.concat([len, typeBuf, data, crc])
-  }
+function chunk(type, data) {
+  const len = Buffer.alloc(4)
+  len.writeUInt32BE(data.length)
+  const typeBuf = Buffer.from(type, 'ascii')
+  const crcBuf = Buffer.alloc(4)
+  crcBuf.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])))
+  return Buffer.concat([len, typeBuf, data, crcBuf])
+}
 
+function encodePNG(width, height, rgba) {
+  const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
   const ihdr = Buffer.alloc(13)
   ihdr.writeUInt32BE(width, 0)
   ihdr.writeUInt32BE(height, 4)
   ihdr[8] = 8 // bit depth
-  ihdr[9] = 6 // color type RGBA
-  ihdr[10] = 0
-  ihdr[11] = 0
-  ihdr[12] = 0
-
-  const idat = zlib.deflateSync(raw)
-  return Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    chunk('IHDR', ihdr),
-    chunk('IDAT', idat),
-    chunk('IEND', Buffer.alloc(0)),
-  ])
-}
-
-let crcTable = null
-function crc32(buf) {
-  if (!crcTable) {
-    crcTable = new Int32Array(256)
-    for (let n = 0; n < 256; n++) {
-      let c = n
-      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
-      crcTable[n] = c
-    }
+  ihdr[9] = 6 // RGBA
+  const raw = Buffer.alloc((width * 4 + 1) * height)
+  for (let y = 0; y < height; y++) {
+    raw[y * (width * 4 + 1)] = 0
+    rgba.copy(raw, y * (width * 4 + 1) + 1, y * width * 4, (y + 1) * width * 4)
   }
-  let crc = -1
-  for (let i = 0; i < buf.length; i++) {
-    crc = (crc >>> 8) ^ crcTable[(crc ^ buf[i]) & 0xff]
-  }
-  return (crc ^ -1) >>> 0
+  return Buffer.concat([sig, chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))])
 }
 
-// ---- pixel cat sprite (18x18 logical) ----
-const CAT = [
-  '....oo......oo....',
-  '..oofffo..offfo...',
-  '.ooffffffofffff...',
-  '.ooffffFooooooo...',
-  '.oofffffffffff....',
-  '..oofffffffff.....',
-  '...oofffffff......',
-  '..oofffffffff.....',
-  '.oofffffffffff....',
-  '.offfffffffffff...',
-  '.offEEffoffEFF....',
-  '.offEHEfoEHEF.....',
-  '.offfffffffff.....',
-  '.oooffffnffff.....',
-  '..oofffnnfff......',
-  '...oofffmff.......',
-  '....offfff........',
-  '.....oooo.........',
-]
-const PAL = {
-  o: [91, 58, 30, 255],
-  f: [245, 158, 11, 255],
-  F: [251, 191, 36, 255],
-  E: [17, 24, 39, 255],
-  H: [255, 255, 255, 255],
-  n: [251, 113, 133, 255],
-  m: [124, 45, 18, 255],
+// ---------- Геометрия ----------
+function roundRectSDF(x, y, cx, cy, hw, hh, r) {
+  const qx = Math.abs(x - cx) - (hw - r)
+  const qy = Math.abs(y - cy) - (hh - r)
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r
 }
 
-function appIcon(size) {
-  const cell = size / 18
+// Сердце (неявная кривая), y направлена вниз
+function heart(x, y) {
+  const x2 = x * x
+  const y2 = y * y
+  return (x2 + y2 - 1) ** 3 - x2 * y * y2 <= 0
+}
+
+function heartAt(px, py, cx, cy, s, angle) {
+  const dx = px - cx
+  const dy = py - cy
+  const c = Math.cos(angle)
+  const sn = Math.sin(angle)
+  const x = (dx * c + dy * sn) / s
+  const y = (-dx * sn + dy * c) / s
+  return heart(x, y)
+}
+
+function hexToRgb(hex) {
+  const v = parseInt(hex.slice(1), 16)
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255]
+}
+
+function render(size) {
+  const out = Buffer.alloc(size * size * 4)
   const pad = size * 0.06
-  return makePng(size, size, (x, y) => {
-    // rounded gradient background
-    const radius = size * 0.22
-    const inRounded = (x, y) => {
-      const xr = Math.min(x, size - x)
-      const yr = Math.min(y, size - y)
-      if (xr <= radius && yr <= radius) {
-        const dx = radius - xr
-        const dy = radius - yr
-        return dx * dx + dy * dy <= radius * radius
+  const hw = size / 2 - pad
+  const r = size * 0.22
+  const cx = size / 2
+  const heartS = size * 0.30
+  const heartCy = size / 2 - 0.25 * heartS
+  const smallS = size * 0.16
+  const smallX = cx + 0.60 * heartS
+  const smallY = heartCy - 0.38 * heartS
+  const shadowX = cx + 0.025 * size
+  const shadowY = heartCy + 0.04 * size
+
+  const top = hexToRgb('#8b5cf6')
+  const bot = hexToRgb('#ec4899')
+  const shadow = [64, 6, 44, 0.30]
+  const small = hexToRgb('#ff6b9d')
+
+  const SS = 3
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let rA = 0, gA = 0, bA = 0, aA = 0
+      for (let sy = 0; sy < SS; sy++) {
+        for (let sx = 0; sx < SS; sx++) {
+          const px = x + (sx + 0.5) / SS
+          const py = y + (sy + 0.5) / SS
+          if (roundRectSDF(px, py, cx, cx, hw, hw, r) > 0) continue
+          const t = (py - pad) / (size - 2 * pad)
+          let cr = top[0] + (bot[0] - top[0]) * t
+          let cg = top[1] + (bot[1] - top[1]) * t
+          let cb = top[2] + (bot[2] - top[2]) * t
+          let ca = 1
+          if (heartAt(px, py, shadowX, shadowY, heartS, 0)) {
+            cr = shadow[0]; cg = shadow[1]; cb = shadow[2]; ca = shadow[3]
+          }
+          if (heartAt(px, py, cx, heartCy, heartS, 0)) {
+            cr = 255; cg = 255; cb = 255; ca = 1
+          }
+          if (heartAt(px, py, smallX, smallY, smallS, 0.4)) {
+            cr = small[0]; cg = small[1]; cb = small[2]; ca = 1
+          }
+          rA += cr; gA += cg; bA += cb; aA += ca * 255
+        }
       }
-      return true
+      const n = SS * SS
+      const i = (y * size + x) * 4
+      out[i] = Math.round(rA / n)
+      out[i + 1] = Math.round(gA / n)
+      out[i + 2] = Math.round(bA / n)
+      out[i + 3] = Math.round(aA / n)
     }
-    if (!inRounded(x, y)) return [0, 0, 0, 0]
-    const t = (x + y) / (2 * size)
-    const r = Math.round(99 + t * (236 - 99))
-    const g = Math.round(102 + t * (72 - 102))
-    const b = Math.round(241 + t * (153 - 241))
-    // scale into inner area
-    const ix = (x - pad) * (size / (size - pad * 2))
-    const iy = (y - pad) * (size / (size - pad * 2))
-    const cx = Math.floor(ix / cell)
-    const cy = Math.floor(iy / cell)
-    const ch = CAT[cy]?.[cx]
-    if (ch === '.') return [r, g, b, 255]
-    const p = PAL[ch] || [0, 0, 0, 0]
-    return p
-  })
+  }
+  return encodePNG(size, size, out)
 }
 
-writeFileSync('public/icons/icon-192.png', appIcon(192))
-writeFileSync('public/icons/icon-512.png', appIcon(512))
-console.log('icons written')
+mkdirSync(ROOT, { recursive: true })
+for (const size of [512, 192]) {
+  const png = render(size)
+  const file = join(ROOT, `icon-${size}.png`)
+  writeFileSync(file, png)
+  console.log(`icon-${size}.png: ${png.length} байт`)
+}
