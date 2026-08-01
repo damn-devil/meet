@@ -78,11 +78,17 @@ describe('App', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Карта' })).toBeInTheDocument())
   })
 
-  it('navigates to profile tab and shows couple info', async () => {
+  it('navigates to profile tab', async () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getByText('Профиль'))
     await waitFor(() => expect(screen.getAllByText('Аня').length).toBeGreaterThan(0))
-    expect(screen.getAllByText('Ваня').length).toBeGreaterThan(0)
+  })
+
+  it('shows couple info on the couple tab', async () => {
+    render(<App />)
+    await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getByText('Пара'))
+    await waitFor(() => expect(screen.getAllByText('Ваня').length).toBeGreaterThan(0))
   })
 })

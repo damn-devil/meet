@@ -795,6 +795,23 @@ begin
 end
 $$;
 
+-- Разрыв пары: любой из двоих может. Планы и общие данные удаляются,
+-- оба снова становятся «одиноки» и могут приглашать других.
+create or replace function public.break_up_couple()
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_couple_id uuid := public.auth_couple_id();
+begin
+  if v_couple_id is null then raise exception 'Вы не в паре'; end if;
+  update public.couple_requests set status = 'declined', responded_at = now()
+  where status = 'pending' and (from_id = auth.uid() or to_id = auth.uid());
+  delete from public.couples where id = v_couple_id;
+  return jsonb_build_object('ok', true);
+end
+$$;
+
 -- ============================================================
 -- Права
 -- ============================================================

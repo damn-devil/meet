@@ -268,6 +268,17 @@ export function StoreProvider({ children }) {
       await loadRequests()
       return null
     },
+    breakUpCouple: async () => {
+      await api.breakUpCouple()
+      unsubscribeTasks()
+      coupleIdRef.current = null
+      dispatch({ type: 'SET_COUPLE', couple: null })
+      dispatch({ type: 'SET_TASKS', tasks: [] })
+      dispatch({ type: 'SET_STATS', stats: { completed: 0, missed: 0, cancelled: 0, avgRating: null } })
+      await loadRequests()
+      showToast(dispatch, 'Пара разорвана', 'success')
+      return null
+    },
     createTask: async (body) => {
       const task = await api.createTask(body)
       dispatch({ type: 'UPSERT_TASK', task })

@@ -52,8 +52,8 @@ export function TasksScreen() {
           <div className="empty-state">
             <div className="empty-art">💛</div>
             <p>Вы пока не в паре</p>
-            <span>Найдите партнёра по имени в профиле и отправьте запрос</span>
-            <button className="btn btn-primary" onClick={() => actions.setView('profile')}>Найти пару</button>
+            <span>Найдите партнёра по имени в разделе «Пара» и отправьте запрос</span>
+            <button className="btn btn-primary" onClick={() => actions.setView('couple')}>Найти пару</button>
           </div>
         )}
         {state.couple && tasks.length === 0 && (

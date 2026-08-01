@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { useStore } from '../store.jsx'
 import { THEMES, ACCENTS, accentValue } from '../lib/theme.js'
 import { applyTheme, safeGet, safeSet, savedAccent } from '../lib/theme.js'
-import { telegramUrl, imessageUrl, hasAnyContact } from '../lib/contacts.js'
-import { Icon } from '../components/Icon.jsx'
 import { Avatar } from '../components/Avatar.jsx'
 import { CropAvatar } from '../components/CropAvatar.jsx'
 
@@ -19,7 +17,6 @@ function dataUrlToBlob(dataUrl) {
 export function ProfileScreen() {
   const { state, actions } = useStore()
   const me = state.user
-  const partner = state.couple?.members?.find((m) => m.id !== me?.id)
 
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(me?.name || '')
@@ -134,44 +131,6 @@ export function ProfileScreen() {
         )}
       </div>
 
-      {/* Couple card */}
-      {state.couple && (
-        <div className="couple-card glass">
-          <h3 className="card-title">Ваша пара</h3>
-          <div className="couple-row">
-            <div className="couple-member">
-              <Avatar url={me?.avatar_url} emoji={me?.avatar} size="couple" alt={me?.name} />
-              <span className="couple-name">{me?.name} <em>вы</em></span>
-            </div>
-            <div className="couple-heart">❤</div>
-            <div className="couple-member">
-              <Avatar url={partner?.avatar_url} emoji={partner?.avatar || '❓'} size="couple" alt={partner?.name} />
-              <span className="couple-name">{partner?.name || 'Ждём второго'}</span>
-            </div>
-          </div>
-          {!partner && (
-            <p className="bg-hint">Партнёр присоединится, когда вы отправите ему запрос в настройках.</p>
-          )}
-          {partner && (
-            <div className="contact-actions">
-              {telegramUrl(partner.telegram) && (
-                <a className="contact-btn tg" href={telegramUrl(partner.telegram)} target="_blank" rel="noopener noreferrer">
-                  <Icon name="send" strokeWidth={2} /> Telegram
-                </a>
-              )}
-              {imessageUrl(partner.imessage) && (
-                <a className="contact-btn im" href={imessageUrl(partner.imessage)}>
-                  <Icon name="imessage" strokeWidth={2} /> iMessage
-                </a>
-              )}
-              {!hasAnyContact(partner) && (
-                <span className="contact-empty">Партнёр пока не указал контакты</span>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Stats */}
       <div className="settings-card glass">
         <h3 className="card-title">Статистика</h3>
@@ -225,65 +184,11 @@ export function ProfileScreen() {
 function SettingsPanel() {
   const { state, actions } = useStore()
   const me = state.user
-  const couple = state.couple
 
-  const [radius, setRadius] = useState(couple?.radius_m || 150)
-  const [windowMin, setWindowMin] = useState(couple?.window_min || 30)
-  const [graceMin, setGraceMin] = useState(couple?.grace_min || 15)
-  const [saved, setSaved] = useState(false)
   const [autoCheck, setAutoCheck] = useState(safeGet('together_autocheck', 'on') === 'on')
   const [notifStatus, setNotifStatus] = useState(
     'Notification' in window ? Notification.permission : 'unsupported'
   )
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [searching, setSearching] = useState(false)
-  const [sendingTo, setSendingTo] = useState(null)
-
-  const searchUsers = async () => {
-    if (!searchQuery.trim()) return
-    setSearching(true)
-    try {
-      const results = await actions.searchUsers(searchQuery.trim())
-      setSearchResults(results || [])
-    } catch (e) {
-      actions.toast(e.message, 'error')
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  const sendRequest = async (toId) => {
-    setSendingTo(toId)
-    try {
-      await actions.sendRequest(toId)
-      setSearchResults([])
-      setSearchQuery('')
-    } catch (e) {
-      actions.toast(e.message, 'error')
-    } finally {
-      setSendingTo(null)
-    }
-  }
-
-  const respond = async (id, approve) => {
-    try {
-      await actions.respondRequest(id, approve)
-    } catch (e) {
-      actions.toast(e.message, 'error')
-    }
-  }
-
-  const cancelReq = async (id) => {
-    try {
-      await actions.cancelRequest(id)
-    } catch (e) {
-      actions.toast(e.message, 'error')
-    }
-  }
-
-  const incoming = state.requests.filter((r) => r.to_id === me?.id && r.status === 'pending')
-  const outgoing = state.requests.filter((r) => r.from_id === me?.id && r.status === 'pending')
 
   const requestNotif = async () => {
     try {
@@ -337,91 +242,8 @@ function SettingsPanel() {
     actions.toast('Фон сброшен')
   }
 
-  const saveSettings = async () => {
-    try {
-      await actions.updateCouple({ radius_m: radius, window_min: windowMin, grace_min: graceMin })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-      actions.toast('Настройки пары сохранены', 'success')
-    } catch (e) {
-      actions.toast(e.message, 'error')
-    }
-  }
-
   return (
     <div className="settings-panel">
-      <div className="setting-group">
-        <span className="setting-label">Пара</span>
-
-        {state.couple ? (
-          <p className="bg-hint">Вы в паре. Планы, фон и настройки общие — их видит партнёр.</p>
-        ) : (
-          <>
-            {incoming.length > 0 && (
-              <div className="request-incoming">
-                {incoming.map((r) => (
-                  <div key={r.id} className="request-item glass">
-                    <Avatar url={r.from.avatar_url} emoji={r.from.avatar || '🙂'} size="comment" alt={r.from.name} />
-                    <div className="request-text">
-                      <strong>{r.from.name}</strong> хочет быть с вами в паре
-                    </div>
-                    <div className="request-actions">
-                      <button className="btn btn-primary btn-sm" onClick={() => respond(r.id, true)}>Согласиться</button>
-                      <button className="btn btn-danger-soft btn-sm" onClick={() => respond(r.id, false)}>Отказать</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <p className="bg-hint">Найдите партнёра по имени или никнейму и отправьте запрос:</p>
-            <div className="search-row">
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
-                placeholder="Имя или никнейм"
-                autoCorrect="off"
-              />
-              <button className="btn btn-soft" onClick={searchUsers} disabled={searching}>
-                {searching ? '…' : '🔍'}
-              </button>
-            </div>
-            {searchResults.length > 0 && (
-              <div className="search-results">
-                {searchResults.map((u) => (
-                  <div key={u.id} className="search-item user-search-item">
-                    <Avatar url={u.avatar_url} emoji={u.avatar || '🙂'} size="comment" alt={u.name} />
-                    <span className="search-item-name">{u.name}</span>
-                    <button
-                      className="btn btn-primary btn-sm"
-                      disabled={sendingTo === u.id}
-                      onClick={() => sendRequest(u.id)}
-                    >
-                      {sendingTo === u.id ? 'Отправляем…' : 'Пригласить'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {outgoing.length > 0 && (
-              <div className="request-outgoing">
-                {outgoing.map((r) => (
-                  <div key={r.id} className="request-item glass">
-                    <Avatar url={r.to.avatar_url} emoji={r.to.avatar || '🙂'} size="comment" alt={r.to.name} />
-                    <div className="request-text">
-                      Запрос отправлен: <strong>{r.to.name}</strong>
-                    </div>
-                    <button className="btn btn-soft btn-sm" onClick={() => cancelReq(r.id)}>Отменить</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
       <div className="setting-group">
         <span className="setting-label">Тема</span>
         <div className="setting-options">
@@ -518,28 +340,6 @@ function SettingsPanel() {
           }}
         />
       </div>
-
-      <div className="setting-group">
-        <span className="setting-label">Радиус встречи: <b>{radius} м</b></span>
-        <input type="range" min="50" max="2000" step="50" value={radius} onChange={(e) => setRadius(+e.target.value)} />
-        <small>Насколько близко к точке должны быть вы, чтобы засчитать приход</small>
-      </div>
-
-      <div className="setting-group">
-        <span className="setting-label">Окно прибытия: ±<b>{windowMin} мин</b></span>
-        <input type="range" min="5" max="120" step="5" value={windowMin} onChange={(e) => setWindowMin(+e.target.value)} />
-        <small>В какое окно до/после времени встречи можно прийти</small>
-      </div>
-
-      <div className="setting-group">
-        <span className="setting-label">Запас на опоздание: <b>{graceMin} мин</b></span>
-        <input type="range" min="0" max="120" step="5" value={graceMin} onChange={(e) => setGraceMin(+e.target.value)} />
-        <small>На сколько можно опоздать после окна, чтобы план не стал «пропущен»</small>
-      </div>
-
-      <button className="btn btn-primary btn-block" onClick={saveSettings}>
-        {saved ? '✓ Сохранено' : 'Сохранить настройки пары'}
-      </button>
     </div>
   )
 }

@@ -142,6 +142,7 @@ export const api = {
   sendCoupleRequest: (toId) => rpc('send_couple_request', { p_to_id: toId }),
   respondCoupleRequest: (id, approve) => rpc('respond_couple_request', { p_request_id: id, p_approve: approve }),
   cancelCoupleRequest: (id) => rpc('cancel_couple_request', { p_request_id: id }),
+  breakUpCouple: () => rpc('break_up_couple'),
   stats: () => rpc('get_stats'),
 }
 
