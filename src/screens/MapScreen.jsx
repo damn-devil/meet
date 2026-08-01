@@ -11,6 +11,7 @@ export function MapScreen() {
   const mapEl = useRef(null)
   const markersRef = useRef([])
   const myMarkerRef = useRef(null)
+  const focusedRef = useRef(null)
 
   useEffect(() => {
     let map
@@ -54,6 +55,17 @@ export function MapScreen() {
       markersRef.current.push(marker)
     })
   }, [map, state.tasks])
+
+  // focus a plan opened via «Показать на карте»
+  useEffect(() => {
+    if (!map || !state.mapFocus) return
+    if (focusedRef.current === state.mapFocus) return
+    const t = state.tasks.find((x) => x.id === state.mapFocus)
+    if (!t || t.lat === undefined || t.lng === undefined) return
+    focusedRef.current = state.mapFocus
+    map.setCenter(t.lat, t.lng, 15)
+    setInfo(t)
+  }, [map, state.mapFocus, state.tasks])
 
   // show my location
   useEffect(() => {

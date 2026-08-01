@@ -167,6 +167,12 @@ export function TaskDetailScreen({ taskId }) {
           </div>
         </div>
 
+        {task.lat !== undefined && task.lng !== undefined && (
+          <button className="btn btn-soft btn-block show-map-btn" onClick={() => actions.focusOnMap(task.id)}>
+            🗺 Показать на карте
+          </button>
+        )}
+
         {/* Presence */}
         <div className="presence-card glass">
           <div className="presence-title">Кто пришёл</div>

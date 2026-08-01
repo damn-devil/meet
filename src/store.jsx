@@ -15,6 +15,7 @@ const initialState = {
   loading: true,
   bootError: null,
   bg: '',
+  mapFocus: null,
 }
 
 function reducer(state, action) {
@@ -43,7 +44,9 @@ function reducer(state, action) {
     case 'SET_BG':
       return { ...state, bg: action.bg }
     case 'VIEW':
-      return { ...state, view: action.view, selectedTask: action.view === 'task' ? action.id : state.selectedTask }
+      return { ...state, view: action.view, selectedTask: action.view === 'task' ? action.id : state.selectedTask, mapFocus: action.view === 'map' ? null : state.mapFocus }
+    case 'MAP_FOCUS':
+      return { ...state, view: 'map', selectedTask: null, mapFocus: action.id }
     case 'OPEN_TASK':
       return { ...state, view: 'task', selectedTask: action.id }
     case 'TOAST':
@@ -157,6 +160,7 @@ export function StoreProvider({ children }) {
     },
     setView: (view) => dispatch({ type: 'VIEW', view }),
     openTask: (id) => dispatch({ type: 'OPEN_TASK', id }),
+    focusOnMap: (id) => dispatch({ type: 'MAP_FOCUS', id }),
     updateMe: async (body) => {
       const data = await api.updateMe(body)
       dispatch({ type: 'SET_USER', user: data.user })
@@ -216,11 +220,13 @@ export function StoreProvider({ children }) {
     toast: (msg, type) => showToast(dispatch, msg, type),
     setBg: async (url) => {
       if (state.couple) {
-        await api.updateCouple({ bg: url })
-        dispatch({ type: 'SET_BG', bg: url })
-      } else {
-        dispatch({ type: 'SET_BG', bg: url })
+        try {
+          await api.updateCouple({ bg: url })
+        } catch {
+          showToast(dispatch, 'Фон сохранён только у вас — синхронизация не удалась', 'error')
+        }
       }
+      dispatch({ type: 'SET_BG', bg: url })
     },
   }
 

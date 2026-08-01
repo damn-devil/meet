@@ -445,24 +445,28 @@ select {
   font-weight: 500;
 }
 
-/* ---------- Tab bar (iOS) ---------- */
+/* ---------- Tab bar (iOS, плавающая «пилюля» стекла) ---------- */
 .tab-bar {
   position: fixed;
-  bottom: calc(18px + var(--safe-bottom));
+  bottom: calc(30px + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 2px;
   width: fit-content;
-  max-width: calc(100vw - 32px);
-  background: var(--tab-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
-  border: 1px solid var(--hairline);
+  max-width: calc(100vw - 40px);
+  height: 56px;
+  background: color-mix(in srgb, var(--bg) 38%, transparent);
+  backdrop-filter: blur(32px) saturate(1.9);
+  -webkit-backdrop-filter: blur(32px) saturate(1.9);
+  border: 1px solid color-mix(in srgb, var(--hairline) 80%, transparent);
   border-radius: 999px;
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
-  padding: 6px 8px;
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.24),
+    0 2px 10px rgba(0, 0, 0, 0.1),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+  padding: 5px 7px;
   z-index: 50;
 }
 .tab-item {
@@ -470,9 +474,11 @@ select {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  min-width: 64px;
-  padding: 6px 14px;
+  justify-content: center;
+  gap: 2px;
+  min-width: 54px;
+  height: 44px;
+  padding: 2px 12px;
   border-radius: 999px;
   color: var(--text2);
   transition: color 0.2s, background 0.2s, transform 0.15s var(--spring);
@@ -480,7 +486,9 @@ select {
 }
 .tab-item.active {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .tab-item:active {
   transform: scale(0.9);
@@ -489,16 +497,16 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
 }
 .tab-icon svg {
-  width: 24px;
-  height: 24px;
-  stroke-width: 1.8;
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
 }
 .tab-label {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -1032,7 +1040,7 @@ select {
   position: absolute;
   left: 16px;
   right: 16px;
-  bottom: 16px;
+  bottom: calc(112px + var(--safe-bottom));
   z-index: 5;
   padding: 16px;
   animation: slidein 0.25s var(--ease);
@@ -1316,6 +1324,12 @@ select {
 .invite-join .btn {
   white-space: nowrap;
 }
+.settings-invite {
+  margin-top: 4px;
+}
+.show-map-btn {
+  margin-top: 4px;
+}
 
 /* Contact quick actions */
 .contact-actions {
@@ -1530,13 +1544,13 @@ select {
   font-weight: 600;
 }
 
-/* ---------- Modals (iOS bottom sheet) ---------- */
+/* ---------- Modals (iOS bottom sheet, стекло) ---------- */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
   z-index: 100;
   display: flex;
   align-items: flex-end;
@@ -1551,12 +1565,15 @@ select {
 .modal {
   width: 100%;
   max-width: 520px;
-  background: var(--bg);
-  border-radius: 22px 22px 0 0;
-  padding: 12px 20px calc(20px + var(--safe-bottom));
+  background: color-mix(in srgb, var(--bg) 74%, transparent);
+  backdrop-filter: blur(30px) saturate(1.7);
+  -webkit-backdrop-filter: blur(30px) saturate(1.7);
+  border-radius: 26px 26px 0 0;
+  border-top: 1px solid color-mix(in srgb, #fff 38%, transparent);
+  padding: 12px 20px calc(118px + var(--safe-bottom));
   max-height: 88dvh;
   overflow-y: auto;
-  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 -24px 70px rgba(0, 0, 0, 0.3);
   animation: sheetup 0.34s var(--ease);
 }
 @keyframes sheetup {
