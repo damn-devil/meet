@@ -1,8 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useStore } from '../store.jsx'
-import { createMap } from '../lib/map.js'
-import { haversine } from '../lib/geo.js'
-import { safeGet } from '../lib/theme.js'
 import { formatDateTime, statusMeta, avgRating, relativeTime } from '../lib/format.js'
 import { Avatar } from '../components/Avatar.jsx'
 
@@ -10,61 +7,13 @@ export function TaskDetailScreen({ taskId }) {
   const { state, actions } = useStore()
   const task = state.tasks.find((t) => t.id === taskId)
   const [comment, setComment] = useState('')
-  const [locating, setLocating] = useState(false)
-  const [locResult, setLocResult] = useState(null)
   const [showReschedule, setShowReschedule] = useState(false)
   const [newTime, setNewTime] = useState('')
   const [confirmMissed, setConfirmMissed] = useState(false)
   const [ratingModal, setRatingModal] = useState(false)
-  const mapEl = useRef(null)
 
   const me = state.user
   const partner = state.couple?.members?.find((m) => m.id !== me?.id)
-  const hasPoint = task?.lat != null && task?.lng != null
-
-  useEffect(() => {
-    if (!task || !hasPoint || !mapEl.current) return
-    let map
-    ;(async () => {
-      map = await createMap(mapEl.current, {
-        center: [task.lat, task.lng],
-        zoom: 15,
-        markerColor: '#6366f1',
-      })
-      map.addMarker(task.lat, task.lng, { title: task.place_name || task.title })
-    })()
-    return () => map?.destroy?.()
-  }, [taskId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Automatic arrival detection: when both are near the place within the time
-  // window, check in automatically and mark the task completed.
-  useEffect(() => {
-    if (!task || !['planned', 'in_progress'].includes(task.status)) return
-    if (safeGet('together_autocheck', 'on') !== 'on') return
-    if (task.checkins.some((c) => c.user_id === me?.id)) return
-    if (!navigator.geolocation || !task.lat) return
-
-    let watcher = null
-    let stopped = false
-    const tryCheckin = (lat, lng, accuracy) => {
-      actions.checkin(task.id, lat, lng, accuracy)
-        .then(() => { if (!stopped) { navigator.geolocation.clearWatch(watcher); stopped = true } })
-        .catch(() => {})
-    }
-    watcher = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords
-        const d = haversine(task.lat, task.lng, latitude, longitude)
-        const radius = state.couple?.radius_m || 150
-        if (d <= radius * 1.3) {
-          tryCheckin(latitude, longitude, pos.coords.accuracy || 0)
-        }
-      },
-      () => {},
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
-    )
-    return () => { stopped = true; navigator.geolocation.clearWatch(watcher) }
-  }, [taskId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!task) {
     return (
@@ -83,27 +32,12 @@ export function TaskDetailScreen({ taskId }) {
   const pendingAgreement = task.agreements.find((a) => a.status === 'pending')
   const rating = avgRating(task)
 
-  const checkIn = () => {
-    setLocating(true)
-    setLocResult(null)
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const data = await actions.checkin(task.id, pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy || 0)
-          setLocResult({ ok: true, message: data.success ? 'Вы встретились! 🎉' : 'Вы отмечены как пришедший' })
-        } catch (e) {
-          setLocResult({ ok: false, message: e.message })
-        } finally {
-          setLocating(false)
-        }
-      },
-      (err) => {
-        void err
-        setLocating(false)
-        setLocResult({ ok: false, message: 'Нет доступа к геолокации. Разрешите в настройках Safari.' })
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    )
+  const checkIn = async () => {
+    try {
+      await actions.checkin(task.id)
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    }
   }
 
   const requestAgreement = async (type) => {
@@ -153,15 +87,6 @@ export function TaskDetailScreen({ taskId }) {
 
       <div className="detail-scroll">
         <h1 className="detail-title">{task.title}</h1>
-        {task.place_name && (
-          <div className="detail-place">
-            <span className="detail-place-icon">📍</span>
-            <div>
-              <strong>{task.place_name}</strong>
-              {task.address && <span className="detail-address">{task.address}</span>}
-            </div>
-          </div>
-        )}
         {task.description && <p className="detail-desc">{task.description}</p>}
 
         <div className="detail-grid">
@@ -177,12 +102,6 @@ export function TaskDetailScreen({ taskId }) {
           </div>
         </div>
 
-        {hasPoint && (
-          <button className="btn btn-soft btn-block show-map-btn" onClick={() => actions.focusOnMap(task.id)}>
-            🗺 Показать на карте
-          </button>
-        )}
-
         {/* Presence */}
         <div className="presence-card glass">
           <div className="presence-title">Кто пришёл</div>
@@ -191,20 +110,15 @@ export function TaskDetailScreen({ taskId }) {
             <PresenceItem name={partner?.name} avatar={partner?.avatar} avatarUrl={partner?.avatar_url} arrived={!!partnerCheckin} />
           </div>
           {canAct && !myCheckin && (
-            <button className="btn btn-primary btn-block" onClick={checkIn} disabled={locating}>
-              {locating ? 'Проверяем геолокацию...' : '📍 Я на месте'}
-            </button>
+            <button className="btn btn-primary btn-block" onClick={checkIn}>✅ Я на месте</button>
           )}
           {myCheckin && !partnerCheckin && canAct && (
-            <p className="presence-wait">Ожидаем {partner?.name}... Как только оба будут на месте — задача закроется сама.</p>
-          )}
-          {locResult && (
-            <div className={`loc-result ${locResult.ok ? 'ok' : 'err'}`}>{locResult.message}</div>
+            <p className="presence-wait">Ожидаем {partner?.name}... Как только оба отметятся — план закроется сам.</p>
           )}
         </div>
 
         {task.status === 'completed' && myCheckin && partnerCheckin && (
-          <div className="completed-banner">🎉 Вы встретились! {task.place_name || 'Событие'} состоялось</div>
+          <div className="completed-banner">🎉 Вы встретились! План состоялся</div>
         )}
         {task.status === 'completed' && myCheckin && !partnerCheckin && (
           <div className="completed-banner">✅ Встреча состоялась</div>
@@ -214,19 +128,6 @@ export function TaskDetailScreen({ taskId }) {
           <button className="btn btn-soft btn-block" onClick={() => setRatingModal(true)}>
             {task.ratings.some((r) => r.user_id === me?.id) ? '⭐ Изменить оценку' : '⭐ Оценить встречу'}
           </button>
-        )}
-
-        {/* Map */}
-        {hasPoint ? (
-          <>
-            <div className="detail-map" ref={mapEl} />
-            <p className="map-hint">{task.place_name || 'Место встречи'}</p>
-          </>
-        ) : (
-          <div className="detail-map-empty glass">
-            <span className="detail-map-empty-icon">📍</span>
-            <p>Точка не выбрана — карта недоступна. Отметьте приход по кнопке.</p>
-          </div>
         )}
 
         {/* Agreements */}
@@ -257,6 +158,12 @@ export function TaskDetailScreen({ taskId }) {
             <button className="btn btn-danger-soft" onClick={() => requestAgreement('delete')}>🗑 Удалить</button>
           </div>
         )}
+        {canAct && showReschedule && (
+          <div className="reschedule-box glass">
+            <input type="datetime-local" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
+            <button className="btn btn-primary" onClick={() => requestAgreement('reschedule')}>Отправить на согласование</button>
+          </div>
+        )}
         {canAct && confirmMissed && (
           <div className="reschedule-box glass">
             <p className="field-hint">Отметить план как пропущенный? Встреча не состоялась — это будет видно обоим.</p>
@@ -264,12 +171,6 @@ export function TaskDetailScreen({ taskId }) {
               <button className="btn btn-soft" onClick={() => setConfirmMissed(false)}>Отмена</button>
               <button className="btn btn-danger" onClick={markMissed}>Отметить пропущенным</button>
             </div>
-          </div>
-        )}
-        {canAct && showReschedule && (
-          <div className="reschedule-box glass">
-            <input type="datetime-local" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
-            <button className="btn btn-primary" onClick={() => requestAgreement('reschedule')}>Отправить на согласование</button>
           </div>
         )}
 
@@ -324,7 +225,7 @@ function PresenceItem({ name, avatar, avatarUrl, arrived, self }) {
       <Avatar url={avatarUrl} emoji={avatar} size="presence" alt={name} />
       <div className="presence-info">
         <span>{name}</span>
-        <small>{arrived ? '✅ На месте' : self ? 'Вы ещё не пришли' : 'Ещё в пути'}</small>
+        <small>{arrived ? '✅ На месте' : self ? 'Вы ещё не пришли' : 'Ещё не пришёл'}</small>
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store.jsx'
 import { Avatar } from '../components/Avatar.jsx'
 import { Icon } from '../components/Icon.jsx'
@@ -13,16 +13,19 @@ export function CoupleScreen() {
   const incoming = state.requests.filter((r) => r.to_id === me?.id && r.status === 'pending')
   const outgoing = state.requests.filter((r) => r.from_id === me?.id && r.status === 'pending')
 
-  const [radius, setRadius] = useState(state.couple?.radius_m || 150)
-  const [windowMin, setWindowMin] = useState(state.couple?.window_min || 30)
-  const [graceMin, setGraceMin] = useState(state.couple?.grace_min || 15)
-  const [saved, setSaved] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [sendingTo, setSendingTo] = useState(null)
   const [confirmBreak, setConfirmBreak] = useState(false)
   const [breaking, setBreaking] = useState(false)
+  const [msgText, setMsgText] = useState('')
+  const [sendingMsg, setSendingMsg] = useState(false)
+  const chatRef = useRef(null)
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
+  }, [state.messages])
 
   const searchUsers = async () => {
     if (!searchQuery.trim()) return
@@ -66,17 +69,6 @@ export function CoupleScreen() {
     }
   }
 
-  const saveSettings = async () => {
-    try {
-      await actions.updateCouple({ radius_m: radius, window_min: windowMin, grace_min: graceMin })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-      actions.toast('Настройки пары сохранены', 'success')
-    } catch (e) {
-      actions.toast(e.message, 'error')
-    }
-  }
-
   const breakUp = async () => {
     setBreaking(true)
     try {
@@ -90,11 +82,24 @@ export function CoupleScreen() {
     }
   }
 
+  const sendMessage = async () => {
+    if (!msgText.trim() || sendingMsg) return
+    setSendingMsg(true)
+    try {
+      await actions.sendMessage(msgText)
+      setMsgText('')
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    } finally {
+      setSendingMsg(false)
+    }
+  }
+
   return (
     <div className="screen couple-screen">
       <header className="screen-header">
         <h1>Пара</h1>
-        <p className="screen-sub">Статус пары и приглашения</p>
+        <p className="screen-sub">Статус пары, чат и приглашения</p>
       </header>
 
       {inCouple ? (
@@ -131,30 +136,35 @@ export function CoupleScreen() {
             )}
           </div>
 
-          <div className="settings-card glass">
-            <h3 className="card-title">Настройки встреч</h3>
-            <div className="settings-panel">
-              <div className="setting-group">
-                <span className="setting-label">Радиус встречи: <b>{radius} м</b></span>
-                <input type="range" min="50" max="2000" step="50" value={radius} onChange={(e) => setRadius(+e.target.value)} />
-                <small>Насколько близко к точке должны быть вы, чтобы засчитать приход</small>
-              </div>
-
-              <div className="setting-group">
-                <span className="setting-label">Окно прибытия: ±<b>{windowMin} мин</b></span>
-                <input type="range" min="5" max="120" step="5" value={windowMin} onChange={(e) => setWindowMin(+e.target.value)} />
-                <small>В какое окно до/после времени встречи можно прийти</small>
-              </div>
-
-              <div className="setting-group">
-                <span className="setting-label">Запас на опоздание: <b>{graceMin} мин</b></span>
-                <input type="range" min="0" max="120" step="5" value={graceMin} onChange={(e) => setGraceMin(+e.target.value)} />
-                <small>На сколько можно опоздать после окна, чтобы план не стал «пропущен»</small>
-              </div>
-
-              <button className="btn btn-primary btn-block" onClick={saveSettings}>
-                {saved ? '✓ Сохранено' : 'Сохранить настройки пары'}
-              </button>
+          <div className="settings-card glass chat-card">
+            <h3 className="card-title">Чат</h3>
+            <div className="chat-list" ref={chatRef}>
+              {state.messages.length === 0 && (
+                <p className="chat-empty">Напишите что-нибудь партнёру 😊</p>
+              )}
+              {state.messages.map((m) => (
+                <div key={m.id} className={`chat-msg ${m.user_id === me?.id ? 'mine' : ''}`}>
+                  <div className="chat-msg-head">
+                    <span className="chat-msg-avatar">
+                      <Avatar url={m.avatar_url} emoji={m.avatar || '🙂'} size="comment" alt={m.name} />
+                    </span>
+                    <span className="chat-msg-name">{m.user_id === me?.id ? 'Вы' : m.name}</span>
+                    <span className="chat-msg-time">
+                      {new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="chat-msg-text">{m.text}</div>
+                </div>
+              ))}
+            </div>
+            <div className="chat-input">
+              <input
+                value={msgText}
+                onChange={(e) => setMsgText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                placeholder="Сообщение..."
+              />
+              <button className="btn btn-primary" onClick={sendMessage} disabled={sendingMsg || !msgText.trim()}>➤</button>
             </div>
           </div>
 

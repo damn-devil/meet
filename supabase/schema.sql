@@ -8,21 +8,6 @@
 -- иначе auth_couple_id (см. ниже) упадёт, если profiles ещё не создана.
 set check_function_bodies = false;
 
--- ---------- Хелперы ----------
-
--- Расстояние между точками (haversine, метры)
-create or replace function public.haversine_m(lat1 float, lng1 float, lat2 float, lng2 float)
-returns double precision
-language sql immutable
-as $$
-  select 6371000 * 2 * asin(
-    least(1, sqrt(
-      power(sin(radians(lat2 - lat1) / 2), 2) +
-      cos(radians(lat1)) * cos(radians(lat2)) * power(sin(radians(lng2 - lng1) / 2), 2)
-    ))
-  )
-$$;
-
 -- ============================================================
 -- Таблицы
 -- ============================================================
@@ -30,14 +15,14 @@ $$;
 create table if not exists public.couples (
   id uuid primary key default gen_random_uuid(),
   invite_code text not null unique,
-  radius_m int not null default 150,
-  window_min int not null default 30,
-  grace_min int not null default 15,
   bg text not null default '',
   created_at timestamptz not null default now()
 );
 
 alter table public.couples add column if not exists bg text default '';
+alter table public.couples drop column if exists radius_m;
+alter table public.couples drop column if exists window_min;
+alter table public.couples drop column if exists grace_min;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -65,10 +50,6 @@ create table if not exists public.tasks (
   couple_id uuid not null references public.couples(id) on delete cascade,
   title text not null,
   description text not null default '',
-  place_name text not null default '',
-  address text not null default '',
-  lat double precision,
-  lng double precision,
   scheduled_at timestamptz,
   status text not null default 'planned' check (status in ('planned','in_progress','completed','missed','cancelled')),
   created_by uuid not null references public.profiles(id),
@@ -76,6 +57,11 @@ create table if not exists public.tasks (
   completed_at timestamptz,
   updated_at timestamptz not null default now()
 );
+
+alter table public.tasks drop column if exists place_name;
+alter table public.tasks drop column if exists address;
+alter table public.tasks drop column if exists lat;
+alter table public.tasks drop column if exists lng;
 
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
@@ -89,12 +75,13 @@ create table if not exists public.checkins (
   id uuid primary key default gen_random_uuid(),
   task_id uuid not null references public.tasks(id) on delete cascade,
   user_id uuid not null references public.profiles(id),
-  lat double precision not null,
-  lng double precision not null,
-  accuracy double precision not null default 0,
   arrived_at timestamptz not null default now(),
   unique(task_id, user_id)
 );
+
+alter table public.checkins drop column if exists lat;
+alter table public.checkins drop column if exists lng;
+alter table public.checkins drop column if exists accuracy;
 
 create table if not exists public.agreements (
   id uuid primary key default gen_random_uuid(),
@@ -138,6 +125,17 @@ alter table public.couple_requests add column if not exists responded_at timesta
 create index if not exists idx_requests_from on public.couple_requests(from_id);
 create index if not exists idx_requests_to on public.couple_requests(to_id);
 
+-- Чат между партнёрами
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references public.couples(id) on delete cascade,
+  user_id uuid not null references public.profiles(id),
+  text text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_messages_couple on public.messages(couple_id);
+
 -- id пары текущего пользователя
 create or replace function public.auth_couple_id()
 returns uuid
@@ -158,6 +156,11 @@ alter table public.checkins enable row level security;
 alter table public.agreements enable row level security;
 alter table public.ratings enable row level security;
 alter table public.couple_requests enable row level security;
+alter table public.messages enable row level security;
+
+drop policy if exists "messages_select" on public.messages;
+create policy "messages_select" on public.messages
+  for select to authenticated using (couple_id = auth_couple_id());
 
 drop policy if exists "requests_select" on public.couple_requests;
 create policy "requests_select" on public.couple_requests
@@ -215,9 +218,6 @@ as $$
   select jsonb_build_object(
     'id', c.id,
     'invite_code', c.invite_code,
-    'radius_m', c.radius_m,
-    'window_min', c.window_min,
-    'grace_min', c.grace_min,
     'bg', c.bg,
     'members', coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -241,10 +241,6 @@ as $$
     'couple_id', t.couple_id,
     'title', t.title,
     'description', t.description,
-    'place_name', t.place_name,
-    'address', t.address,
-    'lat', t.lat,
-    'lng', t.lng,
     'scheduled_at', t.scheduled_at,
     'status', t.status,
     'created_by', t.created_by,
@@ -261,8 +257,7 @@ as $$
     ), '[]'::jsonb),
     'checkins', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'id', k.id, 'task_id', k.task_id, 'user_id', k.user_id,
-        'lat', k.lat, 'lng', k.lng, 'accuracy', k.accuracy, 'arrived_at', k.arrived_at
+        'id', k.id, 'task_id', k.task_id, 'user_id', k.user_id, 'arrived_at', k.arrived_at
       ))
       from public.checkins k where k.task_id = t.id
     ), '[]'::jsonb),
@@ -298,10 +293,10 @@ language sql security definer set search_path = public
 as $$
   update public.tasks t
   set status = 'missed', updated_at = now()
-  from public.couples c
-  where t.couple_id = c.id
+  where t.couple_id = public.auth_couple_id()
     and t.status in ('planned','in_progress')
-    and t.scheduled_at + make_interval(mins => c.window_min) + make_interval(mins => c.grace_min) < now()
+    and t.scheduled_at is not null
+    and t.scheduled_at + interval '2 hours' < now()
 $$;
 
 create or replace function public.get_me()
@@ -450,9 +445,7 @@ as $$
 $$;
 
 create or replace function public.create_task(
-  p_title text, p_description text default '', p_place_name text default '',
-  p_address text default '', p_lat double precision default null, p_lng double precision default null,
-  p_scheduled_at timestamptz default null
+  p_title text, p_description text default '', p_scheduled_at timestamptz default null
 )
 returns jsonb
 language plpgsql security definer set search_path = public
@@ -466,9 +459,8 @@ begin
   if p_scheduled_at is not null and p_scheduled_at < now() - interval '1 minute' then
     raise exception 'Время уже прошло, выберите будущее';
   end if;
-  insert into public.tasks (couple_id, title, description, place_name, address, lat, lng, scheduled_at, created_by)
-  values (v_couple_id, btrim(p_title), coalesce(p_description,''), coalesce(p_place_name,''),
-          coalesce(p_address,''), p_lat, p_lng, p_scheduled_at, auth.uid())
+  insert into public.tasks (couple_id, title, description, scheduled_at, created_by)
+  values (v_couple_id, btrim(p_title), coalesce(p_description,''), p_scheduled_at, auth.uid())
   returning * into v_task;
   return public.task_view(v_task.id);
 end
@@ -490,18 +482,14 @@ begin
 end
 $$;
 
--- Проверка прихода: радиус + окно времени
-create or replace function public.check_in(
-  p_task_id uuid, p_lat double precision, p_lng double precision, p_accuracy double precision default 0
-)
+-- Приход: просто кнопка, без геолокации. Когда оба отметились — план выполнен.
+create or replace function public.check_in(p_task_id uuid)
 returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 declare
   v_couple_id uuid := public.auth_couple_id();
   v_task public.tasks;
-  v_settings public.couples;
-  v_dist double precision;
   v_partner uuid;
   v_exists int;
   v_status text;
@@ -514,24 +502,11 @@ begin
 
   if v_task.status = 'completed' then raise exception 'Вы уже встретились!'; end if;
   if v_task.status = 'cancelled' then raise exception 'Задача отменена'; end if;
-  if v_task.status = 'missed' then raise exception 'Время встречи прошло'; end if;
+  if v_task.status = 'missed' then raise exception 'План пропущен'; end if;
 
-  select * into v_settings from public.couples where id = v_couple_id;
-
-  v_dist := public.haversine_m(v_task.lat, v_task.lng, p_lat, p_lng);
-  if (v_dist - coalesce(p_accuracy, 0)) > v_settings.radius_m then
-    raise exception 'Вы вне зоны встречи (нужно не дальше % м, вы в % м)', v_settings.radius_m, round(v_dist);
-  end if;
-
-  if now() < v_task.scheduled_at - make_interval(mins => v_settings.window_min)
-     or now() > v_task.scheduled_at + make_interval(mins => v_settings.window_min) then
-    raise exception 'Вы не в назначенное время';
-  end if;
-
-  insert into public.checkins (task_id, user_id, lat, lng, accuracy)
-  values (p_task_id, auth.uid(), p_lat, p_lng, coalesce(p_accuracy, 0))
-  on conflict (task_id, user_id) do update
-    set lat = excluded.lat, lng = excluded.lng, accuracy = excluded.accuracy;
+  insert into public.checkins (task_id, user_id)
+  values (p_task_id, auth.uid())
+  on conflict (task_id, user_id) do update set arrived_at = now();
 
   select id into v_partner from public.profiles
   where couple_id = v_couple_id and id <> auth.uid() limit 1;
@@ -549,7 +524,7 @@ begin
 
   return jsonb_build_object(
     'success', v_status = 'completed',
-    'message', case when v_status = 'completed' then 'Вы встретились! Задача выполнена' else 'Вы отмечены как пришедший' end,
+    'message', case when v_status = 'completed' then 'Вы встретились! План выполнен' else 'Вы отмечены как пришедший' end,
     'task', public.task_view(p_task_id)
   );
 end
@@ -671,21 +646,15 @@ begin
 end
 $$;
 
--- Убираем старую сигнатуру без p_bg, иначе при вызове с 3 аргументами
--- Postgres не может выбрать между перегрузками («could not choose the best candidate»).
+-- Убираем старые сигнатуры с радиусом/окном/запасом (удалены вместе с геолокацией).
 drop function if exists public.update_couple_settings(integer, integer, integer);
+drop function if exists public.update_couple_settings(integer, integer, integer, text);
 
-create or replace function public.update_couple_settings(
-  p_radius_m int default null, p_window_min int default null, p_grace_min int default null,
-  p_bg text default null
-)
+create or replace function public.update_couple_settings(p_bg text default null)
 returns jsonb
 language sql security definer set search_path = public
 as $$
   update public.couples set
-    radius_m = case when p_radius_m is not null then greatest(50, least(5000, p_radius_m)) else radius_m end,
-    window_min = case when p_window_min is not null then greatest(5, least(240, p_window_min)) else window_min end,
-    grace_min = case when p_grace_min is not null then greatest(0, least(240, p_grace_min)) else grace_min end,
     bg = case when p_bg is not null then btrim(p_bg) else bg end
   where id = public.auth_couple_id()
   returning public.couple_view(id)
@@ -779,8 +748,8 @@ begin
     if (select couple_id from public.profiles where id = v_req.from_id) is not null then
       raise exception 'Отправитель уже в паре';
     end if;
-    insert into public.couples (invite_code, radius_m, window_min, grace_min)
-    values (upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6)), 150, 30, 15)
+    insert into public.couples (invite_code)
+    values (upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6)))
     returning id into v_couple;
     update public.profiles set couple_id = v_couple where id in (v_req.from_id, v_req.to_id);
     update public.couple_requests set status = 'accepted', responded_at = now() where id = p_request_id;
@@ -828,6 +797,50 @@ end
 $$;
 
 -- ============================================================
+-- Чат между партнёрами
+-- ============================================================
+
+create or replace function public.send_message(p_text text)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_couple_id uuid := public.auth_couple_id();
+  v_message public.messages;
+begin
+  if v_couple_id is null then raise exception 'Вы не в паре'; end if;
+  if p_text is null or btrim(p_text) = '' then raise exception 'Пустое сообщение'; end if;
+  insert into public.messages (couple_id, user_id, text)
+  values (v_couple_id, auth.uid(), left(btrim(p_text), 2000))
+  returning * into v_message;
+  return jsonb_build_object(
+    'id', v_message.id,
+    'couple_id', v_message.couple_id,
+    'user_id', v_message.user_id,
+    'text', v_message.text,
+    'created_at', v_message.created_at,
+    'name', (select p.name from public.profiles p where p.id = auth.uid()),
+    'avatar', (select p.avatar from public.profiles p where p.id = auth.uid()),
+    'avatar_url', (select p.avatar_url from public.profiles p where p.id = auth.uid())
+  );
+end
+$$;
+
+create or replace function public.get_messages()
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', m.id, 'couple_id', m.couple_id, 'user_id', m.user_id,
+    'text', m.text, 'created_at', m.created_at,
+    'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url
+  ) order by m.created_at asc), '[]'::jsonb)
+  from public.messages m
+  join public.profiles p on p.id = m.user_id
+  where m.couple_id = public.auth_couple_id()
+$$;
+
+-- ============================================================
 -- Права
 -- ============================================================
 
@@ -868,6 +881,9 @@ begin
   end if;
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'couple_requests') then
     alter publication supabase_realtime add table public.couple_requests;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages') then
+    alter publication supabase_realtime add table public.messages;
   end if;
 end
 $$;

@@ -288,8 +288,6 @@
                 </div>
               </div>
 
-              <button class="btn btn-soft btn-block show-map-btn">🗺 Показать на карте</button>
-
               <div class="presence-card glass">
                 <div class="presence-title">Кто пришёл</div>
                 <div class="presence-row">
@@ -304,13 +302,6 @@
                 </div>
                 <p class="presence-wait">Ожидаем Ваню… Как только оба будут на месте — задача закроется сама.</p>
               </div>
-
-              <div class="detail-map demo-map">
-                <div class="demo-road" style="left:-20%;top:34%;width:70%;transform:rotate(8deg)"></div>
-                <div class="demo-road" style="right:-20%;top:60%;width:75%;transform:rotate(-6deg)"></div>
-                <div class="demo-pin" style="background:#007aff"><span>📍</span></div>
-              </div>
-              <p class="map-hint">Кафе «Москва» · Тверская, 12</p>
 
               <div class="detail-actions">
                 <button class="btn btn-soft">🕐 Перенести</button>
@@ -335,36 +326,6 @@
                   <button class="btn btn-primary" onclick="demoToast('Комментарий отправлен','success')">➤</button>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <!-- ===== ЭКРАН КАРТЫ ===== -->
-          <section class="screen map-screen hide" id="mapScreen">
-            <div class="map-full demo-map">
-              <div class="demo-road" style="left:-20%;top:24%;width:65%;transform:rotate(5deg)"></div>
-              <div class="demo-road" style="right:-20%;top:48%;width:70%;transform:rotate(-7deg)"></div>
-              <div class="demo-road" style="left:20%;top:-10%;width:22%;height:70%;transform:rotate(70deg)"></div>
-              <div class="demo-pin" style="background:#34c759; left:30%; top:30%"><span>✅</span></div>
-              <div class="demo-pin" style="background:#007aff; left:68%; top:52%"><span>📍</span></div>
-            </div>
-            <div class="map-topbar">
-              <h1>Карта</h1>
-              <span class="map-mode-badge">Яндекс Карты</span>
-            </div>
-            <button class="locate-btn" onclick="demoToast('Ищем вас…')">📍</button>
-            <div class="map-legend glass">
-              <span style="color:#f59e0b">⏳ Запланировано</span>
-              <span style="color:#38bdf8">📍 Встреча идёт</span>
-              <span style="color:#34c759">✅ Выполнено</span>
-            </div>
-            <div class="map-info-card glass">
-              <div class="map-info-top">
-                <h3>Ужин в кафе</h3>
-                <button class="icon-btn">✕</button>
-              </div>
-              <p class="map-info-place">📍 Кафе «Москва» · Тверская, 12</p>
-              <p class="map-info-time">🕐 1 авг, 19:30</p>
-              <span class="map-info-status" style="color:#f59e0b">⏳ Запланировано</span>
             </div>
           </section>
 
@@ -403,24 +364,22 @@
             </div>
 
             <div class="settings-card glass">
-              <h3 class="card-title">Настройки встреч</h3>
+              <h3 class="card-title">Чат</h3>
               <div class="settings-panel">
-                <div class="setting-group">
-                  <span class="setting-label">Радиус встречи: <b>150 м</b></span>
-                  <input type="range" min="50" max="2000" step="50" value="150" />
-                  <small>Насколько близко к точке должны быть вы, чтобы засчитать приход</small>
+                <div class="chat-list" style="max-height:180px">
+                  <div class="chat-msg">
+                    <div class="chat-msg-head"><span class="chat-msg-avatar">🦊</span><span class="chat-msg-name">Вы</span><span class="chat-msg-time">19:10</span></div>
+                    <div class="chat-msg-text">Я уже почти дошёл 🚶</div>
+                  </div>
+                  <div class="chat-msg mine">
+                    <div class="chat-msg-head"><span class="chat-msg-name">Ваня</span><span class="chat-msg-time">19:12</span></div>
+                    <div class="chat-msg-text">Супер, жду в кафе ☕</div>
+                  </div>
                 </div>
-                <div class="setting-group">
-                  <span class="setting-label">Окно прибытия: ±<b>30 мин</b></span>
-                  <input type="range" min="5" max="120" step="5" value="30" />
-                  <small>В какое окно до/после времени встречи можно прийти</small>
+                <div class="chat-input">
+                  <input placeholder="Сообщение..." />
+                  <button class="btn btn-primary" onclick="demoToast('Сообщение отправлено','success')">➤</button>
                 </div>
-                <div class="setting-group">
-                  <span class="setting-label">Запас на опоздание: <b>15 мин</b></span>
-                  <input type="range" min="0" max="120" step="5" value="15" />
-                  <small>На сколько можно опоздать после окна, чтобы план не стал «пропущен»</small>
-                </div>
-                <button class="btn btn-primary btn-block" onclick="demoToast('Настройки пары сохранены','success')">Сохранить настройки пары</button>
               </div>
             </div>
 
@@ -505,13 +464,6 @@
                   </div>
                   <input type="checkbox" class="toggle" role="switch" aria-label="Уведомления" checked />
                 </div>
-                <div class="setting-row">
-                  <div class="setting-row-info">
-                    <span class="setting-row-title">Автопроверка прихода</span>
-                    <span class="setting-row-sub">Само отметит вас, когда вы рядом с местом</span>
-                  </div>
-                  <input type="checkbox" class="toggle" role="switch" aria-label="Автопроверка" checked />
-                </div>
                 <button class="btn btn-danger-soft btn-block" onclick="demoToast('Вы вышли')">Выйти</button>
               </div>
             </div>
@@ -533,10 +485,6 @@
             <button class="tab-item active" data-tab="tasks" onclick="openTab('tasks')">
               <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span>
               <span class="tab-label">Планы</span>
-            </button>
-            <button class="tab-item" data-tab="map" onclick="openTab('map')">
-              <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
-              <span class="tab-label">Карта</span>
             </button>
             <button class="tab-item" data-tab="couple" onclick="openTab('couple')">
               <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.4 3-3.3 3-5.5A3.5 3.5 0 0 0 18.5 5c-1.8 0-2.9.9-3.5 1.9C14.4 5.9 13.3 5 11.5 5A3.5 3.5 0 0 0 8 8.5c0 2.2 1.5 4.1 3 5.5"/><path d="M12 20.9 5.1 14a4 4 0 0 1 5.7-5.6c.4.4.7.8.9 1.2.2-.4.5-.8.9-1.2a4 4 0 0 1 5.7 5.6l-3.3 3.1"/></svg></span>
@@ -561,23 +509,7 @@
           <div class="modal-body">
             <label class="field"><span>Что делаем</span><input placeholder="Например: ужин в кафе" value="Кофе в субботу" /></label>
             <label class="field"><span>Комментарий</span><input placeholder="Что-нибудь ещё" /></label>
-            <div class="field">
-              <span>Найти место</span>
-              <div class="search-row">
-                <input placeholder="Кафе, кино, парк..." value="Кофейня" />
-                <button class="btn btn-soft">🔍</button>
-              </div>
-              <div class="search-results">
-                <button class="search-item"><span class="search-item-name">Кофейня «Ветка»</span><span class="search-item-addr">Пятницкая, 21</span></button>
-                <button class="search-item"><span class="search-item-name">Кофейня «Декабрь»</span><span class="search-item-addr">Большая Никитская, 10</span></button>
-              </div>
-            </div>
-            <div class="map-picker demo-map">
-              <div class="demo-road" style="left:-20%;top:40%;width:70%;transform:rotate(6deg)"></div>
-              <div class="demo-pin" style="background:#007aff"><span>📍</span></div>
-            </div>
-            <p class="map-hint">👆 Коснитесь карты, чтобы выбрать точку встречи</p>
-            <label class="field"><span>Когда</span><input type="datetime-local" /></label>
+            <label class="field"><span>Когда (не обязательно)</span><input type="datetime-local" /></label>
             <button class="btn btn-primary btn-block" onclick="closeSheet(event);demoToast('План создан!','success')">Сохранить план</button>
           </div>
         </div>

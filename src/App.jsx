@@ -1,7 +1,6 @@
 import { StoreProvider, useStore, useThemeInit } from './store.jsx'
 import { AuthScreen } from './screens/AuthScreen.jsx'
 import { TasksScreen } from './screens/TasksScreen.jsx'
-import { MapScreen } from './screens/MapScreen.jsx'
 import { ProfileScreen } from './screens/ProfileScreen.jsx'
 import { CoupleScreen } from './screens/CoupleScreen.jsx'
 import { TaskDetailScreen } from './screens/TaskDetailScreen.jsx'
@@ -137,8 +136,6 @@ function AppInner() {
   let screen
   if (state.view === 'task' && state.selectedTask) {
     screen = <TaskDetailScreen taskId={state.selectedTask} />
-  } else if (state.view === 'map') {
-    screen = <MapScreen />
   } else if (state.view === 'couple') {
     screen = <CoupleScreen />
   } else if (state.view === 'profile') {
@@ -182,7 +179,6 @@ function TabBar() {
   const tabs = [
     { id: 'tasks', icon: 'calendar', label: 'Планы' },
     { id: 'couple', icon: 'heart', label: 'Пара' },
-    { id: 'map', icon: 'map', label: 'Карта' },
     { id: 'profile', icon: 'person', label: 'Профиль' },
   ]
   const active = state.view === 'task' ? 'tasks' : state.view

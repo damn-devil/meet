@@ -12,12 +12,16 @@ vi.mock('../api.js', () => ({
   unsubscribeTasks: vi.fn(),
   subscribeRequests: () => ({ subscribe: vi.fn() }),
   unsubscribeRequests: vi.fn(),
+  subscribeMessages: () => ({ subscribe: vi.fn() }),
+  unsubscribeMessages: vi.fn(),
   api: {
     me: vi.fn(),
     tasks: vi.fn(),
     stats: vi.fn(),
     myRequests: vi.fn(),
+    getMessages: vi.fn(),
     markMissed: vi.fn(),
+    sendMessage: vi.fn(),
   },
 }))
 
@@ -25,7 +29,7 @@ import { api } from '../api.js'
 
 const user = { id: 1, name: 'Аня', avatar: '🙂', bio: '', theme: 'light' }
 const couple = {
-  id: 1, invite_code: 'ABC123', radius_m: 150, window_min: 30, grace_min: 15,
+  id: 1, invite_code: 'ABC123',
   members: [user, { id: 2, name: 'Ваня', avatar: '🐶', bio: '', theme: 'light' }],
 }
 const task = {
@@ -33,10 +37,6 @@ const task = {
   couple_id: 1,
   title: 'Ужин в кафе',
   description: '',
-  place_name: 'Кафе Москва',
-  address: '',
-  lat: 55.7558,
-  lng: 37.6173,
   scheduled_at: Date.now() + 3600_000,
   status: 'planned',
   created_by: 1,
@@ -54,6 +54,7 @@ beforeEach(() => {
   api.tasks.mockResolvedValue([task])
   api.stats.mockResolvedValue({ completed: 0, missed: 0, cancelled: 0, avgRating: null, hasActiveStreak: false })
   api.myRequests.mockResolvedValue([])
+  api.getMessages.mockResolvedValue([])
 })
 
 describe('App', () => {
@@ -63,20 +64,18 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Планы' })).toBeInTheDocument()
   })
 
-  it('shows task detail with map placeholder on click', async () => {
+  it('shows task detail on click', async () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getAllByText('Ужин в кафе')[0])
     await waitFor(() => expect(screen.getByText('Комментарии (0)')).toBeInTheDocument())
-    expect(screen.getAllByText('Кафе Москва').length).toBeGreaterThan(0)
     expect(screen.getByText('Кто пришёл')).toBeInTheDocument()
   })
 
-  it('navigates to map tab', async () => {
+  it('has no map tab', async () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
-    await userEvent.click(screen.getByText('Карта'))
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Карта' })).toBeInTheDocument())
+    expect(screen.queryByText('Карта')).not.toBeInTheDocument()
   })
 
   it('navigates to profile tab', async () => {
@@ -86,20 +85,23 @@ describe('App', () => {
     await waitFor(() => expect(screen.getAllByText('Аня').length).toBeGreaterThan(0))
   })
 
-  it('shows couple info on the couple tab', async () => {
+  it('shows couple info and chat on the couple tab', async () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getByText('Пара'))
     await waitFor(() => expect(screen.getAllByText('Ваня').length).toBeGreaterThan(0))
+    expect(screen.getByText('Чат')).toBeInTheDocument()
   })
 
-  it('shows no-map placeholder for a plan without a point', async () => {
-    api.tasks.mockResolvedValue([{ ...task, id: 2, title: 'Кофе у Ани', lat: null, lng: null }])
+  it('sends a message in the couple chat', async () => {
+    api.sendMessage.mockResolvedValue({ id: 99, user_id: 1, name: 'Аня', avatar: '🙂', text: 'Привет!', created_at: Date.now() })
     render(<App />)
-    await waitFor(() => expect(screen.getAllByText('Кофе у Ани').length).toBeGreaterThan(0))
-    await userEvent.click(screen.getAllByText('Кофе у Ани')[0])
-    await waitFor(() => expect(screen.getByText(/Точка не выбрана/)).toBeInTheDocument())
-    expect(screen.queryByText('Показать на карте')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getByText('Пара'))
+    await waitFor(() => expect(screen.getByText('Чат')).toBeInTheDocument())
+    await userEvent.type(screen.getByPlaceholderText('Сообщение...'), 'Привет!')
+    await userEvent.click(screen.getByText('➤'))
+    await waitFor(() => expect(api.sendMessage).toHaveBeenCalledWith('Привет!'))
   })
 
   it('marks a plan as missed', async () => {

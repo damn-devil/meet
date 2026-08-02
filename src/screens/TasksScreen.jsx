@@ -81,10 +81,10 @@ function TaskCard({ task, onClick }) {
   return (
     <button className={`task-card glass ${isLate ? 'late' : ''}`} onClick={onClick}>
       <div className="task-card-top">
-        <span className="task-icon">{task.place_name ? '📍' : '📝'}</span>
+        <span className="task-icon">📝</span>
         <div className="task-card-body">
           <h3>{task.title}</h3>
-          {task.place_name && <p className="task-place">{task.place_name}</p>}
+          {task.scheduled_at && <p className="task-place">{formatDateTime(task.scheduled_at)}</p>}
         </div>
         <span className="status-pill" style={{ background: `${meta.color}1a`, color: meta.color }}>
           {meta.label}

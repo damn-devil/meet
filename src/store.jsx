@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react'
-import { api, subscribeTasks, unsubscribeTasks, subscribeRequests, unsubscribeRequests, hasSession, clearToken } from './api.js'
+import {
+  api, subscribeTasks, unsubscribeTasks, subscribeRequests, unsubscribeRequests,
+  subscribeMessages, unsubscribeMessages, hasSession, clearToken,
+} from './api.js'
 import { applyTheme, savedAccent, safeSet } from './lib/theme.js'
 import { notify } from './lib/notify.js'
 
@@ -9,6 +12,7 @@ const initialState = {
   user: null,
   couple: null,
   tasks: [],
+  messages: [],
   requests: [],
   stats: { completed: 0, missed: 0, cancelled: 0, avgRating: null },
   view: 'tasks',
@@ -17,7 +21,6 @@ const initialState = {
   loading: true,
   bootError: null,
   bg: '',
-  mapFocus: null,
 }
 
 function reducer(state, action) {
@@ -47,10 +50,12 @@ function reducer(state, action) {
       return { ...state, bg: action.bg }
     case 'SET_REQUESTS':
       return { ...state, requests: action.requests }
+    case 'SET_MESSAGES':
+      return { ...state, messages: action.messages }
+    case 'ADD_MESSAGE':
+      return { ...state, messages: [...state.messages, action.message] }
     case 'VIEW':
-      return { ...state, view: action.view, selectedTask: action.view === 'task' ? action.id : state.selectedTask, mapFocus: action.view === 'map' ? null : state.mapFocus }
-    case 'MAP_FOCUS':
-      return { ...state, view: 'map', selectedTask: null, mapFocus: action.id }
+      return { ...state, view: action.view, selectedTask: action.view === 'task' ? action.id : state.selectedTask }
     case 'OPEN_TASK':
       return { ...state, view: 'task', selectedTask: action.id }
     case 'TOAST':
@@ -88,13 +93,8 @@ export function StoreProvider({ children }) {
       if (event === 'couple:update') {
         const prev = stateRef.current.couple
         dispatch({ type: 'SET_COUPLE', couple: payload })
-        if (prev) {
-          if (payload.bg && payload.bg !== prev.bg) {
-            notify('Фон приложения', 'Партнёр сменил обои', 'couple-bg')
-          }
-          if (payload.radius_m !== prev.radius_m || payload.window_min !== prev.window_min || payload.grace_min !== prev.grace_min) {
-            notify('Настройки встреч', 'Партнёр изменил настройки встреч', 'couple-settings')
-          }
+        if (prev && payload.bg && payload.bg !== prev.bg) {
+          notify('Фон приложения', 'Партнёр сменил обои', 'couple-bg')
         }
         const me = payload.members.find((m) => m.id === stateRef.current.user?.id)
         if (me) applyTheme(me.theme, me.accent || savedAccent())
@@ -105,7 +105,27 @@ export function StoreProvider({ children }) {
   const syncLocalPrefs = (user) => {
     if (!user) return
     safeSet('together_accent', user.accent || '')
-    safeSet('together_autocheck', user.autocheck ? 'on' : 'off')
+  }
+
+  const connectMessages = (coupleId) => {
+    if (!coupleId) return
+    unsubscribeMessages()
+    subscribeMessages(coupleId, (msg) => {
+      dispatch({ type: 'ADD_MESSAGE', message: msg })
+      const me = stateRef.current.user?.id
+      if (msg.user_id !== me) {
+        const sender = msg.name || 'Партнёр'
+        actions.toast(`💬 ${sender}: ${msg.text}`, 'info')
+        notify(sender, msg.text, `msg-${msg.id}`)
+      }
+    })
+  }
+
+  const loadMessages = async () => {
+    try {
+      const messages = await api.getMessages()
+      dispatch({ type: 'SET_MESSAGES', messages })
+    } catch {}
   }
 
   const refreshStats = async () => {
@@ -120,6 +140,8 @@ export function StoreProvider({ children }) {
     dispatch({ type: 'SET_TASKS', tasks })
     dispatch({ type: 'SET_STATS', stats })
     connect(coupleId)
+    connectMessages(coupleId)
+    if (coupleId) await loadMessages()
   }
 
   const loadRequests = async () => {
@@ -191,6 +213,7 @@ export function StoreProvider({ children }) {
       cancelled = true
       unsubscribeTasks()
       unsubscribeRequests()
+      unsubscribeMessages()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -220,6 +243,7 @@ export function StoreProvider({ children }) {
       } catch {}
       unsubscribeTasks()
       unsubscribeRequests()
+      unsubscribeMessages()
       coupleIdRef.current = null
       dispatch({ type: 'LOGOUT' })
     },
@@ -231,6 +255,7 @@ export function StoreProvider({ children }) {
       } catch {}
       unsubscribeTasks()
       unsubscribeRequests()
+      unsubscribeMessages()
       coupleIdRef.current = null
       dispatch({ type: 'LOGOUT' })
     },
@@ -239,7 +264,6 @@ export function StoreProvider({ children }) {
     },
     setView: (view) => dispatch({ type: 'VIEW', view }),
     openTask: (id) => dispatch({ type: 'OPEN_TASK', id }),
-    focusOnMap: (id) => dispatch({ type: 'MAP_FOCUS', id }),
     updateMe: async (body) => {
       const data = await api.updateMe(body)
       syncLocalPrefs(data.user)
@@ -282,9 +306,11 @@ export function StoreProvider({ children }) {
     breakUpCouple: async () => {
       await api.breakUpCouple()
       unsubscribeTasks()
+      unsubscribeMessages()
       coupleIdRef.current = null
       dispatch({ type: 'SET_COUPLE', couple: null })
       dispatch({ type: 'SET_TASKS', tasks: [] })
+      dispatch({ type: 'SET_MESSAGES', messages: [] })
       dispatch({ type: 'SET_STATS', stats: { completed: 0, missed: 0, cancelled: 0, avgRating: null } })
       await loadRequests()
       showToast(dispatch, 'Пара разорвана', 'success')
@@ -299,10 +325,10 @@ export function StoreProvider({ children }) {
       const task = await api.comment(id, text)
       dispatch({ type: 'UPSERT_TASK', task })
     },
-    checkin: async (id, lat, lng, accuracy) => {
-      const data = await api.checkin(id, lat, lng, accuracy)
+    checkin: async (id) => {
+      const data = await api.checkin(id)
       dispatch({ type: 'UPSERT_TASK', task: data.task })
-      if (data.success) showToast(dispatch, 'Вы встретились! Задача выполнена', 'success')
+      if (data.success) showToast(dispatch, 'Вы встретились! План выполнен', 'success')
       return data
     },
     requestAgreement: async (id, type, scheduled_at) => {
@@ -328,6 +354,13 @@ export function StoreProvider({ children }) {
       const task = await api.markMissed(id)
       dispatch({ type: 'UPSERT_TASK', task })
       return task
+    },
+    sendMessage: async (text) => {
+      const trimmed = (text || '').trim()
+      if (!trimmed) return null
+      const msg = await api.sendMessage(trimmed)
+      dispatch({ type: 'ADD_MESSAGE', message: msg })
+      return msg
     },
     toast: (msg, type) => showToast(dispatch, msg, type),
     setBg: async (url) => {

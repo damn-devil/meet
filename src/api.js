@@ -110,15 +110,10 @@ export const api = {
     rpc('create_task', {
       p_title: body.title,
       p_description: body.description || '',
-      p_place_name: body.place_name || '',
-      p_address: body.address || '',
-      p_lat: body.lat ?? null,
-      p_lng: body.lng ?? null,
       p_scheduled_at: body.scheduled_at ? new Date(body.scheduled_at).toISOString() : null,
     }),
   comment: (id, text) => rpc('add_comment', { p_task_id: id, p_text: text }),
-  checkin: (id, lat, lng, accuracy) =>
-    rpc('check_in', { p_task_id: id, p_lat: lat, p_lng: lng, p_accuracy: accuracy || 0 }),
+  checkin: (id) => rpc('check_in', { p_task_id: id }),
   requestAgreement: (id, type, scheduled_at) =>
     rpc('request_agreement', {
       p_task_id: id,
@@ -133,11 +128,10 @@ export const api = {
     rpc('rate_task', { p_task_id: id, p_score: score, p_comment: comment || '' }),
   updateCouple: (body) =>
     rpc('update_couple_settings', {
-      p_radius_m: body.radius_m,
-      p_window_min: body.window_min,
-      p_grace_min: body.grace_min,
       p_bg: body.bg,
     }),
+  sendMessage: (text) => rpc('send_message', { p_text: text }),
+  getMessages: () => rpc('get_messages'),
   searchUsers: (query) => rpc('search_users', { p_query: query || null }),
   myRequests: () => rpc('get_my_requests'),
   sendCoupleRequest: (toId) => rpc('send_couple_request', { p_to_id: toId }),
@@ -149,6 +143,7 @@ export const api = {
 
 let channel = null
 let requestsChannel = null
+let messagesChannel = null
 
 async function fetchTask(id) {
   try {
@@ -210,4 +205,24 @@ export function subscribeRequests(onEvent) {
 export function unsubscribeRequests() {
   if (requestsChannel) supabase?.removeChannel(requestsChannel)
   requestsChannel = null
+}
+
+// Сообщения чата пары
+export function subscribeMessages(coupleId, onEvent) {
+  if (!supabase) return null
+  unsubscribeMessages()
+  messagesChannel = supabase
+    .channel(`messages:${coupleId}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'messages', filter: `couple_id=eq.${coupleId}` },
+      (payload) => onEvent(payload.new)
+    )
+    .subscribe()
+  return messagesChannel
+}
+
+export function unsubscribeMessages() {
+  if (messagesChannel) supabase?.removeChannel(messagesChannel)
+  messagesChannel = null
 }

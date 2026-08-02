@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store.jsx'
 import { THEMES, ACCENTS, accentValue } from '../lib/theme.js'
-import { applyTheme, safeGet, safeSet, savedAccent } from '../lib/theme.js'
+import { applyTheme, safeSet, savedAccent } from '../lib/theme.js'
 import { Avatar } from '../components/Avatar.jsx'
 import { CropAvatar } from '../components/CropAvatar.jsx'
 
@@ -29,6 +29,7 @@ export function ProfileScreen() {
   const [imessage, setImessage] = useState(me?.imessage || '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   const avatars = ['🐶', '🐼', '🦊', '🐸', '🐰', '🦁', '🐯', '🐹', '🐨']
 
@@ -153,7 +154,11 @@ export function ProfileScreen() {
       {/* Settings */}
       <div className="settings-card glass">
         <h3 className="card-title">Настройки</h3>
-        <SettingsPanel />
+        <div className="settings-panel">
+          <button className="btn btn-soft btn-block" onClick={() => setShowSettings(true)}>
+            ⚙️ Основные настройки
+          </button>
+        </div>
         <button className="btn btn-danger-soft btn-block" onClick={async () => { await actions.logout(); location.reload() }}>
           Выйти
         </button>
@@ -177,6 +182,20 @@ export function ProfileScreen() {
       </div>
 
       {cropSrc && <CropAvatar src={cropSrc} onCancel={() => setCropSrc(null)} onSave={saveCroppedAvatar} />}
+      {showSettings && (
+        <div className="modal-overlay" onClick={() => setShowSettings(false)}>
+          <div className="modal modal-bottom" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <div className="modal-head">
+              <h2>Основные настройки</h2>
+              <button className="icon-btn" onClick={() => setShowSettings(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <SettingsPanel />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -185,7 +204,6 @@ function SettingsPanel() {
   const { state, actions } = useStore()
   const me = state.user
 
-  const [autoCheck, setAutoCheck] = useState(safeGet('together_autocheck', 'on') === 'on')
   const [notifStatus, setNotifStatus] = useState(
     'Notification' in window ? Notification.permission : 'unsupported'
   )
@@ -317,27 +335,6 @@ function SettingsPanel() {
           checked={notifStatus === 'granted'}
           disabled={notifStatus === 'unsupported' || notifStatus === 'granted'}
           onChange={requestNotif}
-        />
-      </div>
-
-      <div className="setting-row">
-        <div className="setting-row-info">
-          <span className="setting-row-title">Автопроверка прихода</span>
-          <span className="setting-row-sub">Само отметит вас, когда вы окажетесь рядом с местом</span>
-        </div>
-        <input
-          type="checkbox"
-          className="toggle"
-          role="switch"
-          aria-label="Автопроверка прихода"
-          checked={autoCheck}
-          onChange={(e) => {
-            const v = e.target.checked
-            setAutoCheck(v)
-            safeSet('together_autocheck', v ? 'on' : 'off')
-            actions.updateMe({ autocheck: v }).catch(() => actions.toast('Не удалось сохранить настройку', 'error'))
-            actions.toast(v ? 'Автопроверка включена' : 'Автопроверка выключена')
-          }}
         />
       </div>
     </div>
