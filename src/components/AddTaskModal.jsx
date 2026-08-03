@@ -5,6 +5,7 @@ export function AddTaskModal({ onClose }) {
   const { actions } = useStore()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [mapUrl, setMapUrl] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [error, setError] = useState(null)
@@ -15,11 +16,17 @@ export function AddTaskModal({ onClose }) {
     if (!title.trim()) return setError('Дайте плану название')
     const when = date && time ? new Date(`${date}T${time}`).getTime() : null
     if (when && isNaN(when)) return setError('Неверная дата')
+    const link = mapUrl.trim()
+    const extraDesc = link
+      ? description.trim()
+        ? `\n🗺 ${link}`
+        : `🗺 ${link}`
+      : ''
     setBusy(true)
     try {
       await actions.createTask({
         title: title.trim(),
-        description: description.trim(),
+        description: description.trim() + extraDesc,
         scheduled_at: when,
       })
       actions.toast('План создан!', 'success')
@@ -48,6 +55,11 @@ export function AddTaskModal({ onClose }) {
           <label className="field">
             <span>Комментарий</span>
             <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Что-нибудь ещё" />
+          </label>
+          <label className="field">
+            <span>Ссылка на Яндекс Карты (не обязательно)</span>
+            <input value={mapUrl} onChange={(e) => setMapUrl(e.target.value)} placeholder="https://yandex.ru/maps/?rtext=..." inputMode="url" />
+            <small className="field-hint">Вставьте ссылку на точку — потом откроется кнопка «Показать на карте»</small>
           </label>
 
           <div className="field">

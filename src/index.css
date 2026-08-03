@@ -814,6 +814,12 @@ select {
   padding: 14px;
 }
 
+.map-open-btn {
+  margin-top: 12px;
+  text-align: center;
+  text-decoration: none;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

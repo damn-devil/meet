@@ -3,6 +3,15 @@ import { useStore } from '../store.jsx'
 import { formatDateTime, statusMeta, avgRating, relativeTime } from '../lib/format.js'
 import { Avatar } from '../components/Avatar.jsx'
 
+function extractMapUrl(text) {
+  if (!text) return null
+  const m = text.match(/(https?:\/\/[^\s]+)/i)
+  const url = m ? m[1] : null
+  if (!url) return null
+  if (/yandex|maps\.google|2gis/i.test(url)) return url
+  return null
+}
+
 export function TaskDetailScreen({ taskId }) {
   const { state, actions } = useStore()
   const task = state.tasks.find((t) => t.id === taskId)
@@ -29,6 +38,10 @@ export function TaskDetailScreen({ taskId }) {
   }
 
   const meta = statusMeta(task.status)
+  const mapUrl = extractMapUrl(task.description)
+  const descText = mapUrl
+    ? task.description.replace(/\s*🗺\s*https?:\/\/\S+$/i, '').trim()
+    : (task.description || '')
   const myCheckin = task.checkins.find((c) => c.user_id === me?.id)
   const partnerCheckin = task.checkins.find((c) => c.user_id === partner?.id)
   const pendingAgreement = task.agreements.find((a) => a.status === 'pending')
@@ -101,7 +114,17 @@ export function TaskDetailScreen({ taskId }) {
 
       <div className="detail-scroll">
         <h1 className="detail-title">{task.title}</h1>
-        {task.description && <p className="detail-desc">{task.description}</p>}
+        {descText && <p className="detail-desc">{descText}</p>}
+        {mapUrl && (
+          <a
+            className="btn btn-primary btn-block map-open-btn"
+            href={mapUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            🗺 Показать на карте
+          </a>
+        )}
 
         <div className="detail-grid">
           <div className="info-cell glass">
