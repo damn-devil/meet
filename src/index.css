@@ -2663,3 +2663,24 @@ select {
 .app.brutal.is-dark .status-pill {
   color: var(--brutal-ink);
 }
+
+/* ----- вход/регистрация: плоская бумага, коробчатая карточка ----- */
+.app.brutal .auth-screen {
+  background: var(--brutal-paper);
+}
+.app.brutal .auth-bg,
+.app.brutal .orb {
+  display: none;
+}
+.app.brutal .auth-card {
+  background: var(--brutal-card);
+  border: 3px solid var(--brutal-ink);
+  border-radius: var(--radius-card);
+  box-shadow: 8px 8px 0 var(--brutal-ink);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.app.brutal .auth-card::before,
+.app.brutal .auth-card::after {
+  display: none;
+}

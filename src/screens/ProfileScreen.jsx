@@ -267,21 +267,6 @@ function SettingsPanel() {
         </div>
       </div>
 
-      <div className="setting-row">
-        <div className="setting-row-info">
-          <span className="setting-row-title">Брутал-режим</span>
-          <span className="setting-row-sub">Резкие рамки, тени и терминальные поля — совсем другой вид</span>
-        </div>
-        <input
-          type="checkbox"
-          className="toggle"
-          role="switch"
-          aria-label="Брутал-режим"
-          checked={state.brutal}
-          onChange={(e) => actions.setBrutal(e.target.checked)}
-        />
-      </div>
-
     </div>
   )
 }

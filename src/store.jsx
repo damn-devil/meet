@@ -21,7 +21,7 @@ const initialState = {
   loading: true,
   bootError: null,
   bg: '',
-  brutal: safeGet('together_brutal') !== '0',
+  brutal: true,
   isDark: false,
 }
 
@@ -54,8 +54,6 @@ function reducer(state, action) {
       return { ...state, requests: action.requests }
     case 'SET_FREE_DAYS':
       return { ...state, freeDays: action.days }
-    case 'SET_BRUTAL':
-      return { ...state, brutal: action.brutal }
     case 'SET_DARK':
       return { ...state, isDark: action.dark }
     case 'VIEW':
@@ -339,10 +337,6 @@ export function StoreProvider({ children }) {
         }
       }
       dispatch({ type: 'SET_BG', bg: url })
-    },
-    setBrutal: (on) => {
-      safeSet('together_brutal', on ? '1' : '0')
-      dispatch({ type: 'SET_BRUTAL', brutal: !!on })
     },
     setDark: (dark) => dispatch({ type: 'SET_DARK', dark: !!dark }),
   }

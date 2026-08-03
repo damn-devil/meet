@@ -100,7 +100,13 @@ function AppInner() {
     )
   }
 
-  if (!state.user) return <AuthScreen />
+  if (!state.user) {
+    return (
+      <div className={`app brutal${state.isDark ? ' is-dark' : ''}`}>
+        <AuthScreen />
+      </div>
+    )
+  }
   if (state.bootError) {
     return (
       <div className="boot-screen">
@@ -127,7 +133,7 @@ function AppInner() {
   }
 
   return (
-    <div className={`app${bg ? ' has-bg' : ''}${state.brutal ? ' brutal' : ''}${state.isDark ? ' is-dark' : ''}`} style={bg ? { '--bg-img': `url("${bg}")` } : undefined}>
+    <div className={`app${bg ? ' has-bg' : ''} brutal${state.isDark ? ' is-dark' : ''}`} style={bg ? { '--bg-img': `url("${bg}")` } : undefined}>
       <svg className="sr-only" width="0" height="0" aria-hidden="true" focusable="false">
         <defs>
           <filter id="toggle-goo">
