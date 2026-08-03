@@ -160,6 +160,9 @@ export function ProfileScreen() {
         <button className="btn btn-danger-soft btn-block" onClick={async () => { await actions.logout(); location.reload() }}>
           Выйти
         </button>
+      </div>
+
+      <div className="danger-zone">
         <button className="btn btn-danger-soft btn-block" onClick={() => setConfirmDelete(true)}>
           Удалить аккаунт
         </button>
