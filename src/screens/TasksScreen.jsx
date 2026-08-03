@@ -78,8 +78,9 @@ function TaskCard({ task, onClick }) {
   const rating = avgRating(task)
   const partnerCheckins = task.checkins.length
   const isLate = task.scheduled_at && task.scheduled_at < Date.now() && ['planned', 'in_progress'].includes(task.status)
+  const pendingAgreement = task.agreements?.find((a) => a.status === 'pending')
   return (
-    <button className={`task-card glass ${isLate ? 'late' : ''}`} onClick={onClick}>
+    <div className={`task-card glass ${isLate ? 'late' : ''}`} onClick={onClick}>
       <div className="task-card-top">
         <span className="task-icon">📝</span>
         <div className="task-card-body">
@@ -102,6 +103,43 @@ function TaskCard({ task, onClick }) {
           {rating && <span className="task-rating">★ {rating}</span>}
         </span>
       </div>
-    </button>
+      {pendingAgreement && <CardAgreement task={task} agreement={pendingAgreement} onClick={onClick} />}
+    </div>
+  )
+}
+
+function CardAgreement({ task, agreement, onClick }) {
+  const { state, actions } = useStore()
+  const me = state.user
+  const isMine = agreement.requested_by === me?.id
+
+  const act = async (agree) => {
+    try {
+      await actions.respondAgreement(agreement.id, agree)
+      actions.toast(agree ? 'Согласовано' : 'Запрос отклонён')
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    }
+  }
+
+  const kindText =
+    agreement.type === 'delete'
+      ? 'удалить'
+      : agreement.type === 'reschedule'
+        ? `перенести на ${formatDateTime(agreement.proposed_value)}`
+        : 'изменить'
+
+  return (
+    <div className="card-agreement" onClick={(e) => e.stopPropagation()}>
+      <div className="card-agreement-text">
+        {isMine ? `Вы предложили ${kindText} — ждём ответа` : `${agreement.requester_name || 'Партнёр'} хочет ${kindText}`}
+      </div>
+      {!isMine && (
+        <div className="card-agreement-actions">
+          <button className="btn btn-sm btn-primary" onClick={() => act(true)}>Разрешить</button>
+          <button className="btn btn-sm btn-danger-soft" onClick={() => act(false)}>Запретить</button>
+        </div>
+      )}
+    </div>
   )
 }

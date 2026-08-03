@@ -81,13 +81,20 @@ alter table public.checkins drop column if exists accuracy;
 create table if not exists public.agreements (
   id uuid primary key default gen_random_uuid(),
   task_id uuid not null references public.tasks(id) on delete cascade,
-  type text not null check (type in ('delete','reschedule')),
+  type text not null check (type in ('delete','reschedule','edit')),
   proposed_value text,
+  proposed_title text,
+  proposed_description text,
   requested_by uuid not null references public.profiles(id),
   status text not null default 'pending' check (status in ('pending','approved','rejected','cancelled')),
   decided_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.agreements add column if not exists proposed_title text;
+alter table public.agreements add column if not exists proposed_description text;
+alter table public.agreements drop constraint if exists agreements_type_check;
+alter table public.agreements add constraint agreements_type_check check (type in ('delete','reschedule','edit'));
 
 create table if not exists public.ratings (
   id uuid primary key default gen_random_uuid(),
@@ -232,7 +239,8 @@ as $$
     'agreements', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', a.id, 'task_id', a.task_id, 'type', a.type,
-        'proposed_value', a.proposed_value, 'requested_by', a.requested_by,
+        'proposed_value', a.proposed_value, 'proposed_title', a.proposed_title,
+        'proposed_description', a.proposed_description, 'requested_by', a.requested_by,
         'status', a.status, 'decided_at', a.decided_at, 'created_at', a.created_at,
         'requester_name', p.name
       ) order by a.created_at desc)
@@ -507,7 +515,8 @@ $$;
 
 -- Запрос на перенос/удаление (нужно согласие второго)
 create or replace function public.request_agreement(
-  p_task_id uuid, p_type text, p_proposed_value timestamptz default null
+  p_task_id uuid, p_type text, p_proposed_value timestamptz default null,
+  p_proposed_title text default null, p_proposed_description text default null
 )
 returns jsonb
 language plpgsql security definer set search_path = public
@@ -520,12 +529,23 @@ begin
   select * into v_task from public.tasks where id = p_task_id and couple_id = v_couple_id;
   if not found then raise exception 'Задача не найдена'; end if;
   if v_task.status in ('completed','cancelled') then raise exception 'Задачу нельзя изменить'; end if;
-  if p_type not in ('delete','reschedule') then raise exception 'Неверный тип'; end if;
+  if p_type not in ('delete','reschedule','edit') then raise exception 'Неверный тип'; end if;
   if p_type = 'reschedule' and p_proposed_value is null then raise exception 'Укажите новое время'; end if;
+  if p_type = 'edit' then
+    if (p_proposed_title is null or btrim(p_proposed_title) = '') and p_proposed_value is null then
+      raise exception 'Нечего менять';
+    end if;
+  end if;
   select count(*) into v_pending from public.agreements where task_id = p_task_id and status = 'pending';
   if v_pending > 0 then raise exception 'Запрос уже отправлен и ждёт ответа'; end if;
-  insert into public.agreements (task_id, type, proposed_value, requested_by)
-  values (p_task_id, p_type, case when p_type = 'reschedule' then p_proposed_value::text else null end, auth.uid());
+  insert into public.agreements (task_id, type, proposed_value, proposed_title, proposed_description, requested_by)
+  values (
+    p_task_id, p_type,
+    case when p_type in ('reschedule','edit') then p_proposed_value::text else null end,
+    case when p_type = 'edit' then nullif(btrim(p_proposed_title), '') else null end,
+    case when p_type = 'edit' then nullif(btrim(coalesce(p_proposed_description, '')), '') else null end,
+    auth.uid()
+  );
   update public.tasks set updated_at = now() where id = p_task_id;
   return public.task_view(p_task_id);
 end
@@ -557,6 +577,17 @@ begin
     elsif v_agreement.type = 'reschedule' then
       update public.tasks
       set scheduled_at = v_agreement.proposed_value::timestamptz, status = 'planned', updated_at = now()
+      where id = v_task.id;
+    elsif v_agreement.type = 'edit' then
+      update public.tasks
+      set
+        title = coalesce(v_agreement.proposed_title, v_task.title),
+        description = coalesce(v_agreement.proposed_description, v_task.description),
+        scheduled_at = case
+          when v_agreement.proposed_value is not null then v_agreement.proposed_value::timestamptz
+          else v_task.scheduled_at
+        end,
+        updated_at = now()
       where id = v_task.id;
     end if;
   end if;

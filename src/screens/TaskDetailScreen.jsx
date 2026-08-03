@@ -7,8 +7,11 @@ export function TaskDetailScreen({ taskId }) {
   const { state, actions } = useStore()
   const task = state.tasks.find((t) => t.id === taskId)
   const [showReschedule, setShowReschedule] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const [newDate, setNewDate] = useState('')
   const [newTime, setNewTime] = useState('')
+  const [editTitle, setEditTitle] = useState('')
+  const [editDesc, setEditDesc] = useState('')
   const [ratingModal, setRatingModal] = useState(false)
 
   const me = state.user
@@ -47,6 +50,15 @@ export function TaskDetailScreen({ taskId }) {
         await actions.requestAgreement(task.id, 'reschedule', when)
         actions.toast('Запрос на перенос отправлен партнёру')
         setShowReschedule(false)
+      } else if (type === 'edit') {
+        const when = newDate && newTime ? new Date(`${newDate}T${newTime}`).getTime() : null
+        if (!editTitle.trim() && !editDesc.trim() && !when)
+          return actions.toast('Измените название, описание или время', 'error')
+        await actions.requestAgreement(task.id, 'edit', when, editTitle, editDesc)
+        actions.toast('Запрос на изменение отправлен партнёру')
+        setShowEdit(false)
+        setEditTitle('')
+        setEditDesc('')
       } else {
         await actions.requestAgreement(task.id, 'delete')
         actions.toast('Запрос на удаление отправлен партнёру')
@@ -54,6 +66,18 @@ export function TaskDetailScreen({ taskId }) {
     } catch (e) {
       actions.toast(e.message, 'error')
     }
+  }
+
+  const startEdit = () => {
+    setEditTitle(task.title)
+    setEditDesc(task.description || '')
+    setShowEdit((v) => !v)
+  }
+
+  const agreementText = (a) => {
+    if (a.type === 'delete') return `${a.requester_name} предлагает удалить план`
+    if (a.type === 'reschedule') return `${a.requester_name} предлагает перенести на ${formatDateTime(a.proposed_value)}`
+    return `${a.requester_name} предлагает изменить план`
   }
 
   const respondAgreement = async (agree) => {
@@ -124,9 +148,7 @@ export function TaskDetailScreen({ taskId }) {
         {pendingAgreement && (
           <div className="agreement-card">
             <div className="agreement-text">
-              {pendingAgreement.type === 'delete'
-                ? `${pendingAgreement.requester_name} предлагает удалить план`
-                : `${pendingAgreement.requester_name} предлагает перенести на ${formatDateTime(pendingAgreement.proposed_value)}`}
+              {agreementText(pendingAgreement)}
             </div>
             {pendingAgreement.requested_by !== me?.id && (
               <div className="agreement-actions">
@@ -144,6 +166,7 @@ export function TaskDetailScreen({ taskId }) {
         {canAct && !pendingAgreement && (
           <div className="detail-actions">
             <button className="btn btn-soft" onClick={() => setShowReschedule((v) => !v)}>🕐 Перенести</button>
+            <button className="btn btn-soft" onClick={startEdit}>✏️ Изменить</button>
             <button className="btn btn-danger-soft" onClick={() => requestAgreement('delete')}>🗑 Удалить</button>
           </div>
         )}
@@ -154,6 +177,23 @@ export function TaskDetailScreen({ taskId }) {
               <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} aria-label="Новое время" />
             </div>
             <button className="btn btn-primary" onClick={() => requestAgreement('reschedule')}>Отправить на согласование</button>
+          </div>
+        )}
+        {canAct && showEdit && (
+          <div className="reschedule-box glass">
+            <label className="field">
+              <span>Название</span>
+              <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Название плана" />
+            </label>
+            <label className="field">
+              <span>Описание</span>
+              <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Детали встречи" />
+            </label>
+            <div className="when-row">
+              <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} aria-label="Новая дата" />
+              <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} aria-label="Новое время" />
+            </div>
+            <button className="btn btn-primary" onClick={() => requestAgreement('edit')}>Отправить на согласование</button>
           </div>
         )}
 

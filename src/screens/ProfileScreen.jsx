@@ -154,17 +154,12 @@ export function ProfileScreen() {
       {/* Settings */}
       <div className="settings-card glass">
         <h3 className="card-title">Настройки</h3>
-        <div className="settings-panel">
-          <button className="btn btn-soft btn-block" onClick={() => setShowSettings(true)}>
-            ⚙️ Основные настройки
-          </button>
-        </div>
+        <button className="btn btn-soft btn-block" onClick={() => setShowSettings(true)}>
+          ⚙️ Основные настройки
+        </button>
         <button className="btn btn-danger-soft btn-block" onClick={async () => { await actions.logout(); location.reload() }}>
           Выйти
         </button>
-      </div>
-
-      <div className="danger-zone">
         <button className="btn btn-danger-soft btn-block" onClick={() => setConfirmDelete(true)}>
           Удалить аккаунт
         </button>

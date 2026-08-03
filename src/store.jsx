@@ -297,19 +297,19 @@ export function StoreProvider({ children }) {
       if (data.success) showToast(dispatch, 'Вы встретились! План выполнен', 'success')
       return data
     },
-    requestAgreement: async (id, type, scheduled_at) => {
-      const data = await api.requestAgreement(id, type, scheduled_at)
-      dispatch({ type: 'UPSERT_TASK', task: data.task })
+    requestAgreement: async (id, type, scheduled_at, title, description) => {
+      const data = await api.requestAgreement(id, type, scheduled_at, title, description)
+      dispatch({ type: 'UPSERT_TASK', task: data.task || data })
       return data
     },
     respondAgreement: async (id, approve) => {
       const data = await api.respondAgreement(id, approve)
-      dispatch({ type: 'UPSERT_TASK', task: data.task })
+      dispatch({ type: 'UPSERT_TASK', task: data.task || data })
       return data
     },
     cancelAgreement: async (id) => {
       const data = await api.cancelAgreement(id)
-      dispatch({ type: 'UPSERT_TASK', task: data.task })
+      dispatch({ type: 'UPSERT_TASK', task: data.task || data })
       return data
     },
     rate: async (id, score, comment) => {
