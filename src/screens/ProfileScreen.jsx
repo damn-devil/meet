@@ -87,8 +87,8 @@ export function ProfileScreen() {
         <p className="screen-sub">Настройки и пара</p>
       </header>
 
-      {/* Profile card */}
-      <div className="profile-card glass">
+      {/* Profile */}
+      <div className="profile-head">
         <Avatar url={me?.avatar_url} emoji={me?.avatar} size="big" alt={me?.name} />
         <h2>{me?.name}</h2>
         <p className="profile-bio">{me?.bio || 'Пока ничего о себе'}</p>
@@ -133,27 +133,25 @@ export function ProfileScreen() {
       </div>
 
       {/* Stats */}
-      <div className="settings-card glass">
-        <h3 className="card-title">Статистика</h3>
-        <div className="stats-grid">
-          <div className="stat-card glass">
-            <span className="stat-num">{state.stats.completed}</span>
-            <span className="stat-label">Встреч</span>
-          </div>
-          <div className="stat-card glass">
-            <span className="stat-num">{state.stats.missed}</span>
-            <span className="stat-label">Пропущено</span>
-          </div>
-          <div className="stat-card glass">
-            <span className="stat-num">{state.stats.avgRating ? `★ ${state.stats.avgRating}` : '—'}</span>
-            <span className="stat-label">Оценка</span>
-          </div>
+      <h3 className="card-title">Статистика</h3>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <span className="stat-num">{state.stats.completed}</span>
+          <span className="stat-label">Встреч</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-num">{state.stats.missed}</span>
+          <span className="stat-label">Пропущено</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-num">{state.stats.avgRating ? `★ ${state.stats.avgRating}` : '—'}</span>
+          <span className="stat-label">Оценка</span>
         </div>
       </div>
 
       {/* Settings */}
-      <div className="settings-card glass">
-        <h3 className="card-title">Настройки</h3>
+      <h3 className="card-title">Настройки</h3>
+      <div className="settings-panel">
         <button className="btn btn-soft btn-block" onClick={() => setShowSettings(true)}>
           ⚙️ Основные настройки
         </button>
