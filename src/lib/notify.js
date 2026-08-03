@@ -13,7 +13,7 @@ export async function notify(title, body, tag) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return
     const reg = await navigator.serviceWorker?.ready
     if (!reg || typeof reg.showNotification !== 'function') return
-    reg.showNotification(title || '«Вместе»', {
+    reg.showNotification(title || 'Universe of Plans', {
       body: body || '',
       tag: tag || `together-${Date.now()}`,
       icon: 'icons/icon-192.png',
