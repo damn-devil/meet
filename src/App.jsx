@@ -8,7 +8,6 @@ import { Toast } from './components/Toast.jsx'
 import { Icon } from './components/Icon.jsx'
 import { Avatar } from './components/Avatar.jsx'
 import { useEffect, useRef, useState } from 'react'
-import { notify } from './lib/notify.js'
 import './index.css'
 
 function useCompletionNotifications() {
@@ -35,26 +34,21 @@ function useCompletionNotifications() {
       if (!isFirst && prev && prev !== t.status) {
         if (t.status === 'completed') {
           actions.toast(`✅ Задача «${t.title}» выполнена!`, 'success')
-          notify(t.title, 'Вы встретились!', `task-${t.id}`)
         } else if (t.status === 'missed') {
           actions.toast(`⏰ План «${t.title}» пропущен`, 'info')
-          notify(t.title, 'План пропущен — встреча не состоялась', `task-${t.id}`)
         } else if (t.status === 'cancelled') {
           actions.toast(`🗑 План «${t.title}» отменён`, 'info')
-          notify(t.title, 'План отменён', `task-${t.id}`)
         }
       }
 
       if (!isFirst && !prev && t.created_by !== meId) {
         actions.toast(`📅 Новый план: «${t.title}»`, 'info')
-        notify('Новый план', t.title, `task-${t.id}`)
       }
 
       t.ratings?.forEach((r) => {
         ratings[r.id] = true
         if (!isFirst && r.user_id !== meId && !seenRatings.current[r.id]) {
           actions.toast(`⭐ Партнёр оценил «${t.title}»`, 'info')
-          notify('Новая оценка', `${t.title} — ${r.score} ★`, `rating-${r.id}`)
         }
       })
 
@@ -62,7 +56,6 @@ function useCompletionNotifications() {
         checkins[k.id] = true
         if (!isFirst && k.user_id !== meId && !seenCheckins.current[k.id]) {
           actions.toast(`📍 ${partnerName} на месте: «${t.title}»`, 'info')
-          notify('Кто-то пришёл', `${partnerName} уже на месте — «${t.title}»`, `checkin-${k.id}`)
         }
       })
 
@@ -73,14 +66,11 @@ function useCompletionNotifications() {
           if (a.status === 'pending' && !prevA) {
             const what = a.type === 'delete' ? 'удалить план' : 'перенести план'
             actions.toast(`💬 ${a.requester_name} предлагает ${what}: «${t.title}»`, 'info')
-            notify(a.requester_name, `предлагает ${what}: «${t.title}»`, `agree-${a.id}`)
           } else if (prevA === 'pending' && a.status === 'approved') {
             const what = a.type === 'delete' ? 'удалён' : 'перенесён'
             actions.toast(`✅ План «${t.title}» ${what}`, 'success')
-            notify(t.title, `План ${what}`, `task-${t.id}`)
           } else if (prevA === 'pending' && a.status === 'rejected') {
             actions.toast(`❌ Запрос по «${t.title}» отклонён`, 'info')
-            notify(t.title, 'Запрос отклонён', `task-${t.id}`)
           }
         }
       })

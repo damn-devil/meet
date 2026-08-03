@@ -199,20 +199,6 @@ export function ProfileScreen() {
 function SettingsPanel() {
   const { state, actions } = useStore()
 
-  const [notifStatus, setNotifStatus] = useState(
-    'Notification' in window ? Notification.permission : 'unsupported'
-  )
-
-  const requestNotif = async () => {
-    try {
-      const perm = await Notification.requestPermission()
-      setNotifStatus(perm)
-      actions.toast(perm === 'granted' ? 'Уведомления включены' : 'Уведомления не разрешены', perm === 'granted' ? 'success' : 'error')
-    } catch (e) {
-      actions.toast(e.message, 'error')
-    }
-  }
-
   const changeTheme = (theme) => {
     safeSet('together_theme', theme)
     const dark = applyTheme(theme, savedAccent())
@@ -296,27 +282,6 @@ function SettingsPanel() {
         />
       </div>
 
-      <div className="setting-row">
-        <div className="setting-row-info">
-          <span className="setting-row-title">Уведомления</span>
-          <span className="setting-row-sub">
-            {notifStatus === 'granted'
-              ? 'Вы будете узнавать о встречах и ответах партнёра'
-              : notifStatus === 'unsupported'
-                ? 'Этот браузер не поддерживает уведомления'
-                : 'Разрешите push-уведомления'}
-          </span>
-        </div>
-        <input
-          type="checkbox"
-          className="toggle"
-          role="switch"
-          aria-label="Уведомления"
-          checked={notifStatus === 'granted'}
-          disabled={notifStatus === 'unsupported' || notifStatus === 'granted'}
-          onChange={requestNotif}
-        />
-      </div>
     </div>
   )
 }

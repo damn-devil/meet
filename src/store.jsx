@@ -4,7 +4,6 @@ import {
   hasSession, clearToken,
 } from './api.js'
 import { applyTheme, savedTheme, savedAccent, safeSet, safeGet } from './lib/theme.js'
-import { notify } from './lib/notify.js'
 
 const StoreContext = createContext(null)
 
@@ -92,11 +91,7 @@ export function StoreProvider({ children }) {
       }
       if (event === 'task:delete') dispatch({ type: 'REMOVE_TASK', id: payload.id })
       if (event === 'couple:update') {
-        const prev = stateRef.current.couple
         dispatch({ type: 'SET_COUPLE', couple: payload })
-        if (prev && payload.bg && payload.bg !== prev.bg) {
-          notify('Фон приложения', 'Партнёр сменил обои', 'couple-bg')
-        }
       }
     })
   }
@@ -149,7 +144,6 @@ export function StoreProvider({ children }) {
       if (payload.eventType === 'INSERT' && row.to_id === me && row.status === 'pending') {
         loadRequests()
         showToast(dispatch, 'Вам отправили запрос на пару — посмотрите в разделе «Пара»', 'info')
-        notify('Запрос на пару', 'Вам отправили запрос — посмотрите в разделе «Пара»', 'couple-request')
       } else if (row.status === 'accepted') {
         refreshAfterCouple()
       } else {
