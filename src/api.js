@@ -112,7 +112,6 @@ export const api = {
       p_description: body.description || '',
       p_scheduled_at: body.scheduled_at ? new Date(body.scheduled_at).toISOString() : null,
     }),
-  comment: (id, text) => rpc('add_comment', { p_task_id: id, p_text: text }),
   checkin: (id) => rpc('check_in', { p_task_id: id }),
   requestAgreement: (id, type, scheduled_at) =>
     rpc('request_agreement', {
@@ -123,15 +122,12 @@ export const api = {
   respondAgreement: (id, approve) =>
     rpc('respond_agreement', { p_agreement_id: id, p_approve: approve }),
   cancelAgreement: (id) => rpc('cancel_agreement', { p_agreement_id: id }),
-  markMissed: (id) => rpc('mark_task_missed', { p_task_id: id }),
   rate: (id, score, comment) =>
     rpc('rate_task', { p_task_id: id, p_score: score, p_comment: comment || '' }),
   updateCouple: (body) =>
     rpc('update_couple_settings', {
       p_bg: body.bg,
     }),
-  sendMessage: (text) => rpc('send_message', { p_text: text }),
-  getMessages: () => rpc('get_messages'),
   searchUsers: (query) => rpc('search_users', { p_query: query || null }),
   myRequests: () => rpc('get_my_requests'),
   sendCoupleRequest: (toId) => rpc('send_couple_request', { p_to_id: toId }),
@@ -143,7 +139,6 @@ export const api = {
 
 let channel = null
 let requestsChannel = null
-let messagesChannel = null
 
 async function fetchTask(id) {
   try {
@@ -205,24 +200,4 @@ export function subscribeRequests(onEvent) {
 export function unsubscribeRequests() {
   if (requestsChannel) supabase?.removeChannel(requestsChannel)
   requestsChannel = null
-}
-
-// Сообщения чата пары
-export function subscribeMessages(coupleId, onEvent) {
-  if (!supabase) return null
-  unsubscribeMessages()
-  messagesChannel = supabase
-    .channel(`messages:${coupleId}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'messages', filter: `couple_id=eq.${coupleId}` },
-      (payload) => onEvent(payload.new)
-    )
-    .subscribe()
-  return messagesChannel
-}
-
-export function unsubscribeMessages() {
-  if (messagesChannel) supabase?.removeChannel(messagesChannel)
-  messagesChannel = null
 }

@@ -29,45 +29,6 @@ const THEMES = {
     glass: 'rgba(255,255,255,0.10)',
     shadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 10px 30px rgba(0,0,0,0.55)',
   },
-  midnight: {
-    label: 'Полночь',
-    bg: '#000000',
-    card: 'rgba(22,22,26,0.75)',
-    text: '#f2f2f7',
-    text2: '#8e8e93',
-    accent: '#0a84ff',
-    border: 'rgba(90,100,130,0.45)',
-    navBg: 'rgba(10,10,12,0.82)',
-    tabBg: 'rgba(10,10,12,0.94)',
-    glass: 'rgba(255,255,255,0.09)',
-    shadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 10px 30px rgba(0,0,0,0.6)',
-  },
-  rose: {
-    label: 'Роза',
-    bg: '#fff2f4',
-    card: 'rgba(255,255,255,0.75)',
-    text: '#2d1a1f',
-    text2: '#8e6a72',
-    accent: '#ff2d55',
-    border: 'rgba(255,45,85,0.16)',
-    navBg: 'rgba(255,242,244,0.82)',
-    tabBg: 'rgba(255,249,250,0.94)',
-    glass: 'rgba(255,255,255,0.55)',
-    shadow: '0 1px 0 rgba(255,255,255,0.75) inset, 0 8px 28px rgba(255,45,85,0.10)',
-  },
-  ocean: {
-    label: 'Океан',
-    bg: '#eef6fb',
-    card: 'rgba(255,255,255,0.78)',
-    text: '#0b2a3a',
-    text2: '#5f7d8c',
-    accent: '#0a84ff',
-    border: 'rgba(10,132,255,0.16)',
-    navBg: 'rgba(238,246,251,0.82)',
-    tabBg: 'rgba(247,251,254,0.94)',
-    glass: 'rgba(255,255,255,0.55)',
-    shadow: '0 1px 0 rgba(255,255,255,0.75) inset, 0 8px 28px rgba(10,132,255,0.10)',
-  },
 }
 
 export const ACCENTS = {
@@ -91,12 +52,17 @@ export function savedAccent() {
   return accentValue(safeGet('together_accent'))
 }
 
+export function savedTheme() {
+  const t = safeGet('together_theme')
+  return THEMES[t] ? t : 'auto'
+}
+
 export function applyTheme(themeName, accentName) {
   const theme = THEMES[themeName] || THEMES.auto
   const accent = accentValue(accentName)
   const dark = theme.isAuto
     ? window.matchMedia('(prefers-color-scheme: dark)').matches
-    : themeName === 'dark' || themeName === 'midnight'
+    : themeName === 'dark'
 
   let t
   if (theme.isAuto) {

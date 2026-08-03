@@ -63,13 +63,8 @@ alter table public.tasks drop column if exists address;
 alter table public.tasks drop column if exists lat;
 alter table public.tasks drop column if exists lng;
 
-create table if not exists public.comments (
-  id uuid primary key default gen_random_uuid(),
-  task_id uuid not null references public.tasks(id) on delete cascade,
-  user_id uuid not null references public.profiles(id),
-  text text not null,
-  created_at timestamptz not null default now()
-);
+-- Комментарии к планам удалены (drop table после предыдущих версий)
+drop table if exists public.comments cascade;
 
 create table if not exists public.checkins (
   id uuid primary key default gen_random_uuid(),
@@ -105,7 +100,6 @@ create table if not exists public.ratings (
 );
 
 create index if not exists idx_tasks_couple on public.tasks(couple_id);
-create index if not exists idx_comments_task on public.comments(task_id);
 create index if not exists idx_checkins_task on public.checkins(task_id);
 create index if not exists idx_agreements_task on public.agreements(task_id);
 create index if not exists idx_ratings_task on public.ratings(task_id);
@@ -125,16 +119,8 @@ alter table public.couple_requests add column if not exists responded_at timesta
 create index if not exists idx_requests_from on public.couple_requests(from_id);
 create index if not exists idx_requests_to on public.couple_requests(to_id);
 
--- Чат между партнёрами
-create table if not exists public.messages (
-  id uuid primary key default gen_random_uuid(),
-  couple_id uuid not null references public.couples(id) on delete cascade,
-  user_id uuid not null references public.profiles(id),
-  text text not null,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists idx_messages_couple on public.messages(couple_id);
+-- Чат между партнёрами удалён (drop table после предыдущих версий)
+drop table if exists public.messages cascade;
 
 -- id пары текущего пользователя
 create or replace function public.auth_couple_id()
@@ -151,16 +137,10 @@ $$;
 alter table public.couples enable row level security;
 alter table public.profiles enable row level security;
 alter table public.tasks enable row level security;
-alter table public.comments enable row level security;
 alter table public.checkins enable row level security;
 alter table public.agreements enable row level security;
 alter table public.ratings enable row level security;
 alter table public.couple_requests enable row level security;
-alter table public.messages enable row level security;
-
-drop policy if exists "messages_select" on public.messages;
-create policy "messages_select" on public.messages
-  for select to authenticated using (couple_id = auth_couple_id());
 
 drop policy if exists "requests_select" on public.couple_requests;
 create policy "requests_select" on public.couple_requests
@@ -177,10 +157,6 @@ create policy "profiles_select" on public.profiles
 drop policy if exists "tasks_select" on public.tasks;
 create policy "tasks_select" on public.tasks
   for select to authenticated using (couple_id = auth_couple_id());
-
-drop policy if exists "comments_select" on public.comments;
-create policy "comments_select" on public.comments
-  for select to authenticated using (task_id in (select id from public.tasks where couple_id = auth_couple_id()));
 
 drop policy if exists "checkins_select" on public.checkins;
 create policy "checkins_select" on public.checkins
@@ -247,14 +223,6 @@ as $$
     'created_at', t.created_at,
     'completed_at', t.completed_at,
     'updated_at', t.updated_at,
-    'comments', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', c.id, 'task_id', c.task_id, 'user_id', c.user_id, 'text', c.text,
-        'created_at', c.created_at, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url
-      ) order by c.created_at)
-      from public.comments c join public.profiles p on p.id = c.user_id
-      where c.task_id = t.id
-    ), '[]'::jsonb),
     'checkins', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', k.id, 'task_id', k.task_id, 'user_id', k.user_id, 'arrived_at', k.arrived_at
@@ -444,6 +412,10 @@ as $$
   where t.couple_id = public.auth_couple_id()
 $$;
 
+-- Убираем старую сигнатуру с гео-полями (place_name/address/lat/lng),
+-- иначе Postgres не сможет выбрать между перегрузками create_task.
+drop function if exists public.create_task(text, text, text, text, double precision, double precision, timestamptz);
+
 create or replace function public.create_task(
   p_title text, p_description text default '', p_scheduled_at timestamptz default null
 )
@@ -463,22 +435,6 @@ begin
   values (v_couple_id, btrim(p_title), coalesce(p_description,''), p_scheduled_at, auth.uid())
   returning * into v_task;
   return public.task_view(v_task.id);
-end
-$$;
-
-create or replace function public.add_comment(p_task_id uuid, p_text text)
-returns jsonb
-language plpgsql security definer set search_path = public
-as $$
-declare
-  v_task public.tasks;
-begin
-  select * into v_task from public.tasks where id = p_task_id and couple_id = public.auth_couple_id();
-  if not found then raise exception 'Задача не найдена'; end if;
-  if p_text is null or btrim(p_text) = '' then raise exception 'Пустой комментарий'; end if;
-  insert into public.comments (task_id, user_id, text) values (p_task_id, auth.uid(), btrim(p_text));
-  update public.tasks set updated_at = now() where id = p_task_id;
-  return public.task_view(p_task_id);
 end
 $$;
 
@@ -605,23 +561,6 @@ begin
   update public.agreements set status = 'cancelled', decided_at = now() where id = p_agreement_id;
   update public.tasks set updated_at = now() where id = v_agreement.task_id;
   return public.task_view(v_agreement.task_id);
-end
-$$;
-
--- Отметить план пропущенным вручную (кнопка «Не пришёл»)
-create or replace function public.mark_task_missed(p_task_id uuid)
-returns jsonb
-language plpgsql security definer set search_path = public
-as $$
-declare
-  v_couple_id uuid := public.auth_couple_id();
-  v_task public.tasks;
-begin
-  select * into v_task from public.tasks where id = p_task_id and couple_id = v_couple_id;
-  if not found then raise exception 'Задача не найдена'; end if;
-  if v_task.status not in ('planned','in_progress') then raise exception 'Задача уже закрыта'; end if;
-  update public.tasks set status = 'missed', updated_at = now() where id = p_task_id;
-  return public.task_view(p_task_id);
 end
 $$;
 
@@ -797,50 +736,6 @@ end
 $$;
 
 -- ============================================================
--- Чат между партнёрами
--- ============================================================
-
-create or replace function public.send_message(p_text text)
-returns jsonb
-language plpgsql security definer set search_path = public
-as $$
-declare
-  v_couple_id uuid := public.auth_couple_id();
-  v_message public.messages;
-begin
-  if v_couple_id is null then raise exception 'Вы не в паре'; end if;
-  if p_text is null or btrim(p_text) = '' then raise exception 'Пустое сообщение'; end if;
-  insert into public.messages (couple_id, user_id, text)
-  values (v_couple_id, auth.uid(), left(btrim(p_text), 2000))
-  returning * into v_message;
-  return jsonb_build_object(
-    'id', v_message.id,
-    'couple_id', v_message.couple_id,
-    'user_id', v_message.user_id,
-    'text', v_message.text,
-    'created_at', v_message.created_at,
-    'name', (select p.name from public.profiles p where p.id = auth.uid()),
-    'avatar', (select p.avatar from public.profiles p where p.id = auth.uid()),
-    'avatar_url', (select p.avatar_url from public.profiles p where p.id = auth.uid())
-  );
-end
-$$;
-
-create or replace function public.get_messages()
-returns jsonb
-language sql stable security definer set search_path = public
-as $$
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'id', m.id, 'couple_id', m.couple_id, 'user_id', m.user_id,
-    'text', m.text, 'created_at', m.created_at,
-    'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url
-  ) order by m.created_at asc), '[]'::jsonb)
-  from public.messages m
-  join public.profiles p on p.id = m.user_id
-  where m.couple_id = public.auth_couple_id()
-$$;
-
--- ============================================================
 -- Права
 -- ============================================================
 
@@ -881,9 +776,6 @@ begin
   end if;
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'couple_requests') then
     alter publication supabase_realtime add table public.couple_requests;
-  end if;
-  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages') then
-    alter publication supabase_realtime add table public.messages;
   end if;
 end
 $$;

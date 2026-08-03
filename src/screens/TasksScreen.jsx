@@ -58,7 +58,7 @@ export function TasksScreen() {
         )}
         {state.couple && tasks.length === 0 && (
           <div className="empty-state">
-            <div className="empty-art">🗺️</div>
+            <div className="empty-art">✨</div>
             <p>Пока пусто</p>
             <span>Добавьте первое место, куда сходите вместе</span>
           </div>
@@ -98,7 +98,6 @@ function TaskCard({ task, onClick }) {
           </span>
         )}
         <span className="task-meta">
-          {task.comments.length > 0 && <span>💬 {task.comments.length}</span>}
           {partnerCheckins > 0 && <span>📍 {partnerCheckins}/2</span>}
           {rating && <span className="task-rating">★ {rating}</span>}
         </span>

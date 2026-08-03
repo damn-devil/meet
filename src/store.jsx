@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react'
 import {
   api, subscribeTasks, unsubscribeTasks, subscribeRequests, unsubscribeRequests,
-  subscribeMessages, unsubscribeMessages, hasSession, clearToken,
+  hasSession, clearToken,
 } from './api.js'
-import { applyTheme, savedAccent, safeSet } from './lib/theme.js'
+import { applyTheme, savedTheme, savedAccent, safeSet, safeGet } from './lib/theme.js'
 import { notify } from './lib/notify.js'
 
 const StoreContext = createContext(null)
@@ -12,7 +12,6 @@ const initialState = {
   user: null,
   couple: null,
   tasks: [],
-  messages: [],
   requests: [],
   stats: { completed: 0, missed: 0, cancelled: 0, avgRating: null },
   view: 'tasks',
@@ -21,6 +20,7 @@ const initialState = {
   loading: true,
   bootError: null,
   bg: '',
+  brutal: safeGet('together_brutal') === '1',
 }
 
 function reducer(state, action) {
@@ -50,10 +50,8 @@ function reducer(state, action) {
       return { ...state, bg: action.bg }
     case 'SET_REQUESTS':
       return { ...state, requests: action.requests }
-    case 'SET_MESSAGES':
-      return { ...state, messages: action.messages }
-    case 'ADD_MESSAGE':
-      return { ...state, messages: [...state.messages, action.message] }
+    case 'SET_BRUTAL':
+      return { ...state, brutal: action.brutal }
     case 'VIEW':
       return { ...state, view: action.view, selectedTask: action.view === 'task' ? action.id : state.selectedTask }
     case 'OPEN_TASK':
@@ -96,8 +94,6 @@ export function StoreProvider({ children }) {
         if (prev && payload.bg && payload.bg !== prev.bg) {
           notify('Фон приложения', 'Партнёр сменил обои', 'couple-bg')
         }
-        const me = payload.members.find((m) => m.id === stateRef.current.user?.id)
-        if (me) applyTheme(me.theme, me.accent || savedAccent())
       }
     })
   }
@@ -105,27 +101,6 @@ export function StoreProvider({ children }) {
   const syncLocalPrefs = (user) => {
     if (!user) return
     safeSet('together_accent', user.accent || '')
-  }
-
-  const connectMessages = (coupleId) => {
-    if (!coupleId) return
-    unsubscribeMessages()
-    subscribeMessages(coupleId, (msg) => {
-      dispatch({ type: 'ADD_MESSAGE', message: msg })
-      const me = stateRef.current.user?.id
-      if (msg.user_id !== me) {
-        const sender = msg.name || 'Партнёр'
-        actions.toast(`💬 ${sender}: ${msg.text}`, 'info')
-        notify(sender, msg.text, `msg-${msg.id}`)
-      }
-    })
-  }
-
-  const loadMessages = async () => {
-    try {
-      const messages = await api.getMessages()
-      dispatch({ type: 'SET_MESSAGES', messages })
-    } catch {}
   }
 
   const refreshStats = async () => {
@@ -140,8 +115,6 @@ export function StoreProvider({ children }) {
     dispatch({ type: 'SET_TASKS', tasks })
     dispatch({ type: 'SET_STATS', stats })
     connect(coupleId)
-    connectMessages(coupleId)
-    if (coupleId) await loadMessages()
   }
 
   const loadRequests = async () => {
@@ -213,7 +186,6 @@ export function StoreProvider({ children }) {
       cancelled = true
       unsubscribeTasks()
       unsubscribeRequests()
-      unsubscribeMessages()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -243,7 +215,6 @@ export function StoreProvider({ children }) {
       } catch {}
       unsubscribeTasks()
       unsubscribeRequests()
-      unsubscribeMessages()
       coupleIdRef.current = null
       dispatch({ type: 'LOGOUT' })
     },
@@ -255,7 +226,6 @@ export function StoreProvider({ children }) {
       } catch {}
       unsubscribeTasks()
       unsubscribeRequests()
-      unsubscribeMessages()
       coupleIdRef.current = null
       dispatch({ type: 'LOGOUT' })
     },
@@ -269,8 +239,7 @@ export function StoreProvider({ children }) {
       syncLocalPrefs(data.user)
       dispatch({ type: 'SET_USER', user: data.user })
       dispatch({ type: 'SET_COUPLE', couple: data.couple })
-      const me = data.couple?.members?.find((m) => m.id === data.user?.id)
-      if (me) applyTheme(me.theme, me.accent || savedAccent())
+      applyTheme(savedTheme(), savedAccent())
       return data
     },
     uploadAvatar: (file, ext) => api.uploadAvatar(file, ext),
@@ -306,11 +275,9 @@ export function StoreProvider({ children }) {
     breakUpCouple: async () => {
       await api.breakUpCouple()
       unsubscribeTasks()
-      unsubscribeMessages()
       coupleIdRef.current = null
       dispatch({ type: 'SET_COUPLE', couple: null })
       dispatch({ type: 'SET_TASKS', tasks: [] })
-      dispatch({ type: 'SET_MESSAGES', messages: [] })
       dispatch({ type: 'SET_STATS', stats: { completed: 0, missed: 0, cancelled: 0, avgRating: null } })
       await loadRequests()
       showToast(dispatch, 'Пара разорвана', 'success')
@@ -320,10 +287,6 @@ export function StoreProvider({ children }) {
       const task = await api.createTask(body)
       dispatch({ type: 'UPSERT_TASK', task })
       return task
-    },
-    comment: async (id, text) => {
-      const task = await api.comment(id, text)
-      dispatch({ type: 'UPSERT_TASK', task })
     },
     checkin: async (id) => {
       const data = await api.checkin(id)
@@ -350,18 +313,6 @@ export function StoreProvider({ children }) {
       const task = await api.rate(id, score, comment)
       dispatch({ type: 'UPSERT_TASK', task })
     },
-    markMissed: async (id) => {
-      const task = await api.markMissed(id)
-      dispatch({ type: 'UPSERT_TASK', task })
-      return task
-    },
-    sendMessage: async (text) => {
-      const trimmed = (text || '').trim()
-      if (!trimmed) return null
-      const msg = await api.sendMessage(trimmed)
-      dispatch({ type: 'ADD_MESSAGE', message: msg })
-      return msg
-    },
     toast: (msg, type) => showToast(dispatch, msg, type),
     setBg: async (url) => {
       if (state.couple) {
@@ -372,6 +323,10 @@ export function StoreProvider({ children }) {
         }
       }
       dispatch({ type: 'SET_BG', bg: url })
+    },
+    setBrutal: (on) => {
+      safeSet('together_brutal', on ? '1' : '0')
+      dispatch({ type: 'SET_BRUTAL', brutal: !!on })
     },
   }
 
@@ -385,7 +340,6 @@ export function useStore() {
 export function useThemeInit() {
   const { state } = useStore()
   useEffect(() => {
-    const theme = state.user?.theme || 'auto'
-    applyTheme(theme, state.user?.accent || savedAccent())
+    applyTheme(savedTheme(), state.user?.accent || savedAccent())
   }, [state.user])
 }

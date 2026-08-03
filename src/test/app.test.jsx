@@ -12,25 +12,20 @@ vi.mock('../api.js', () => ({
   unsubscribeTasks: vi.fn(),
   subscribeRequests: () => ({ subscribe: vi.fn() }),
   unsubscribeRequests: vi.fn(),
-  subscribeMessages: () => ({ subscribe: vi.fn() }),
-  unsubscribeMessages: vi.fn(),
   api: {
     me: vi.fn(),
     tasks: vi.fn(),
     stats: vi.fn(),
     myRequests: vi.fn(),
-    getMessages: vi.fn(),
-    markMissed: vi.fn(),
-    sendMessage: vi.fn(),
   },
 }))
 
 import { api } from '../api.js'
 
-const user = { id: 1, name: 'Аня', avatar: '🙂', bio: '', theme: 'light' }
+const user = { id: 1, name: 'Аня', avatar: '🙂', bio: '', accent: '' }
 const couple = {
   id: 1, invite_code: 'ABC123',
-  members: [user, { id: 2, name: 'Ваня', avatar: '🐶', bio: '', theme: 'light' }],
+  members: [user, { id: 2, name: 'Ваня', avatar: '🐶', bio: '', accent: '' }],
 }
 const task = {
   id: 1,
@@ -43,7 +38,6 @@ const task = {
   created_at: Date.now(),
   completed_at: null,
   updated_at: Date.now(),
-  comments: [],
   checkins: [],
   agreements: [],
   ratings: [],
@@ -54,7 +48,6 @@ beforeEach(() => {
   api.tasks.mockResolvedValue([task])
   api.stats.mockResolvedValue({ completed: 0, missed: 0, cancelled: 0, avgRating: null, hasActiveStreak: false })
   api.myRequests.mockResolvedValue([])
-  api.getMessages.mockResolvedValue([])
 })
 
 describe('App', () => {
@@ -68,8 +61,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getAllByText('Ужин в кафе')[0])
-    await waitFor(() => expect(screen.getByText('Комментарии (0)')).toBeInTheDocument())
-    expect(screen.getByText('Кто пришёл')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Кто пришёл')).toBeInTheDocument())
   })
 
   it('has no map tab', async () => {
@@ -85,33 +77,37 @@ describe('App', () => {
     await waitFor(() => expect(screen.getAllByText('Аня').length).toBeGreaterThan(0))
   })
 
-  it('shows couple info and chat on the couple tab', async () => {
+  it('shows couple info on the couple tab', async () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getByText('Пара'))
     await waitFor(() => expect(screen.getAllByText('Ваня').length).toBeGreaterThan(0))
-    expect(screen.getByText('Чат')).toBeInTheDocument()
   })
 
-  it('sends a message in the couple chat', async () => {
-    api.sendMessage.mockResolvedValue({ id: 99, user_id: 1, name: 'Аня', avatar: '🙂', text: 'Привет!', created_at: Date.now() })
-    render(<App />)
-    await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
-    await userEvent.click(screen.getByText('Пара'))
-    await waitFor(() => expect(screen.getByText('Чат')).toBeInTheDocument())
-    await userEvent.type(screen.getByPlaceholderText('Сообщение...'), 'Привет!')
-    await userEvent.click(screen.getByText('➤'))
-    await waitFor(() => expect(api.sendMessage).toHaveBeenCalledWith('Привет!'))
-  })
-
-  it('marks a plan as missed', async () => {
-    api.markMissed.mockResolvedValue({ ...task, status: 'missed' })
+  it('has no chat and no comments in task detail', async () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getAllByText('Ужин в кафе')[0])
     await waitFor(() => expect(screen.getByText('Кто пришёл')).toBeInTheDocument())
-    await userEvent.click(screen.getByText(/Не пришёл/))
-    await userEvent.click(screen.getByText('Отметить пропущенным'))
-    await waitFor(() => expect(api.markMissed).toHaveBeenCalledWith(1))
+    expect(screen.queryByText('Комментарии')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Не пришёл/)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByText('‹'))
+    await userEvent.click(screen.getByText('Пара'))
+    await waitFor(() => expect(screen.getAllByText('Ваня').length).toBeGreaterThan(0))
+    expect(screen.queryByText('Чат')).not.toBeInTheDocument()
+  })
+
+  it('shows only auto/light/dark theme options in settings', async () => {
+    render(<App />)
+    await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getByText('Профиль'))
+    await waitFor(() => expect(screen.getAllByText('Аня').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getByText('⚙️ Основные настройки'))
+    await waitFor(() => expect(screen.getByText('Тема')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Авто' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Светлая' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Тёмная' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Полночь' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Роза' })).not.toBeInTheDocument()
   })
 })

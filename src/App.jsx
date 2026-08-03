@@ -15,7 +15,6 @@ function useCompletionNotifications() {
   const { state, actions } = useStore()
   const seen = useRef({})
   const seenAgreements = useRef({})
-  const seenComments = useRef({})
   const seenRatings = useRef({})
   const seenCheckins = useRef({})
   const booted = useRef(false)
@@ -25,7 +24,6 @@ function useCompletionNotifications() {
   useEffect(() => {
     const current = {}
     const agreements = {}
-    const comments = {}
     const ratings = {}
     const checkins = {}
     const isFirst = !booted.current
@@ -51,14 +49,6 @@ function useCompletionNotifications() {
         actions.toast(`📅 Новый план: «${t.title}»`, 'info')
         notify('Новый план', t.title, `task-${t.id}`)
       }
-
-      t.comments?.forEach((c) => {
-        comments[c.id] = true
-        if (!isFirst && c.user_id !== meId && !seenComments.current[c.id]) {
-          actions.toast(`💬 ${c.name}: ${c.text}`, 'info')
-          notify(c.name, c.text, `comment-${c.id}`)
-        }
-      })
 
       t.ratings?.forEach((r) => {
         ratings[r.id] = true
@@ -98,7 +88,6 @@ function useCompletionNotifications() {
 
     seen.current = current
     seenAgreements.current = agreements
-    seenComments.current = comments
     seenRatings.current = ratings
     seenCheckins.current = checkins
     booted.current = true
@@ -145,7 +134,7 @@ function AppInner() {
   }
 
   return (
-    <div className={`app${bg ? ' has-bg' : ''}`} style={bg ? { '--bg-img': `url("${bg}")` } : undefined}>
+    <div className={`app${bg ? ' has-bg' : ''}${state.brutal ? ' brutal' : ''}`} style={bg ? { '--bg-img': `url("${bg}")` } : undefined}>
       {screen}
       <RequestsBanner />
       <TabBar />

@@ -6,10 +6,8 @@ import { Avatar } from '../components/Avatar.jsx'
 export function TaskDetailScreen({ taskId }) {
   const { state, actions } = useStore()
   const task = state.tasks.find((t) => t.id === taskId)
-  const [comment, setComment] = useState('')
   const [showReschedule, setShowReschedule] = useState(false)
   const [newTime, setNewTime] = useState('')
-  const [confirmMissed, setConfirmMissed] = useState(false)
   const [ratingModal, setRatingModal] = useState(false)
 
   const me = state.user
@@ -60,16 +58,6 @@ export function TaskDetailScreen({ taskId }) {
     try {
       await actions.respondAgreement(pendingAgreement.id, agree)
       actions.toast(agree ? 'Согласовано' : 'Запрос отклонён')
-    } catch (e) {
-      actions.toast(e.message, 'error')
-    }
-  }
-
-  const markMissed = async () => {
-    try {
-      await actions.markMissed(task.id)
-      actions.toast('План отмечен как пропущенный', 'info')
-      setConfirmMissed(false)
     } catch (e) {
       actions.toast(e.message, 'error')
     }
@@ -154,7 +142,6 @@ export function TaskDetailScreen({ taskId }) {
         {canAct && !pendingAgreement && (
           <div className="detail-actions">
             <button className="btn btn-soft" onClick={() => setShowReschedule((v) => !v)}>🕐 Перенести</button>
-            <button className="btn btn-soft" onClick={() => setConfirmMissed((v) => !v)}>😿 Не пришёл</button>
             <button className="btn btn-danger-soft" onClick={() => requestAgreement('delete')}>🗑 Удалить</button>
           </div>
         )}
@@ -162,15 +149,6 @@ export function TaskDetailScreen({ taskId }) {
           <div className="reschedule-box glass">
             <input type="datetime-local" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
             <button className="btn btn-primary" onClick={() => requestAgreement('reschedule')}>Отправить на согласование</button>
-          </div>
-        )}
-        {canAct && confirmMissed && (
-          <div className="reschedule-box glass">
-            <p className="field-hint">Отметить план как пропущенный? Встреча не состоялась — это будет видно обоим.</p>
-            <div className="agreement-actions">
-              <button className="btn btn-soft" onClick={() => setConfirmMissed(false)}>Отмена</button>
-              <button className="btn btn-danger" onClick={markMissed}>Отметить пропущенным</button>
-            </div>
           </div>
         )}
 
@@ -182,36 +160,6 @@ export function TaskDetailScreen({ taskId }) {
             } catch (e) { actions.toast(e.message, 'error') }
           }}>Отозвать запрос</button>
         )}
-
-        {/* Comments */}
-        <div className="comments">
-          <h3 className="comments-title">Комментарии ({task.comments.length})</h3>
-          <div className="comments-list">
-            {task.comments.length === 0 && <p className="comments-empty">Обсудите планы здесь</p>}
-            {task.comments.map((c) => (
-              <div key={c.id} className={`comment ${c.user_id === me?.id ? 'mine' : ''}`}>
-                <div className="comment-head">
-                  <span className="comment-avatar"><Avatar url={c.avatar_url} emoji={c.avatar || '🙂'} size="comment" alt={c.name} /></span>
-                  <span className="comment-name">{c.name}</span>
-                  <span className="comment-time">{new Date(c.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-                <div className="comment-text">{c.text}</div>
-              </div>
-            ))}
-          </div>
-          <div className="comment-input">
-            <input
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && comment.trim() && actions.comment(task.id, comment).then(() => setComment(''))}
-              placeholder="Написать комментарий..."
-            />
-            <button
-              className="btn btn-primary"
-              onClick={() => comment.trim() && actions.comment(task.id, comment).then(() => setComment(''))}
-            >➤</button>
-          </div>
-        </div>
       </div>
 
       {ratingModal && <RatingModal task={task} onClose={() => setRatingModal(false)} />}

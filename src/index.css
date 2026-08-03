@@ -913,78 +913,6 @@ select {
 }
 
 /* ---------- Comments ---------- */
-.comments {
-  margin-top: 6px;
-}
-.comments-title {
-  font-size: 17px;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-.comments-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.comments-empty {
-  color: var(--text2);
-  font-size: 14px;
-  text-align: center;
-  padding: 12px;
-}
-.comment {
-  padding: 12px 14px;
-  border-radius: 18px;
-  background: var(--glass);
-  border: 1px solid var(--hairline);
-  backdrop-filter: blur(var(--glass-blur));
-  align-self: flex-start;
-  max-width: 85%;
-}
-.comment.mine {
-  align-self: flex-end;
-  background: color-mix(in srgb, var(--accent) 12%, var(--card));
-}
-.comment-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-.comment-avatar {
-  font-size: 16px;
-}
-.comment-name {
-  font-size: 12px;
-  font-weight: 700;
-}
-.comment-time {
-  font-size: 11px;
-  color: var(--text2);
-  margin-left: auto;
-}
-.comment-text {
-  font-size: 15px;
-  line-height: 1.4;
-}
-
-.comment-input {
-  display: flex;
-  gap: 8px;
-}
-.comment-input input {
-  flex: 1;
-  background: var(--card);
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  padding: 12px 16px;
-  font-size: 15px;
-}
-.comment-input .btn {
-  padding: 0 20px;
-}
-
 /* ---------- Pet ---------- */
 
 .stats-grid {
@@ -1684,86 +1612,6 @@ select {
   flex: 1;
 }
 
-/* ---------- Чат пары ---------- */
-.chat-card {
-  display: flex;
-  flex-direction: column;
-}
-.chat-list {
-  max-height: 46vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 4px 0;
-}
-.chat-empty {
-  text-align: center;
-  color: var(--text2);
-  font-size: 14px;
-  padding: 20px 0;
-}
-.chat-msg {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  border-radius: 14px;
-  background: var(--glass);
-  border: 1px solid var(--hairline);
-  max-width: 86%;
-}
-.chat-msg.mine {
-  align-self: flex-end;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
-}
-.chat-msg-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.chat-msg-avatar {
-  display: flex;
-}
-.chat-msg-name {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent);
-}
-.chat-msg.mine .chat-msg-name {
-  color: var(--text2);
-}
-.chat-msg-time {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text2);
-  opacity: 0.8;
-}
-.chat-msg-text {
-  font-size: 14px;
-  line-height: 1.35;
-  word-break: break-word;
-}
-.chat-input {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-.chat-input input {
-  flex: 1;
-  min-width: 0;
-  background: var(--glass);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-input);
-  padding: 12px;
-  font-size: 15px;
-}
-.chat-input .btn {
-  flex: none;
-  padding: 12px 16px;
-}
-
 /* ---------- Мобильная оптимизация ---------- */
 @media (max-width: 420px) {
   .request-banner,
@@ -1879,7 +1727,6 @@ select {
 .bg-hint,
 .detail-place,
 .reschedule-box input,
-.comment-input input,
 .avatar-opt,
 .invite-join input,
 .search-row input,
@@ -1912,4 +1759,536 @@ select {
 }
 .danger-actions .btn {
   flex: 1;
+}
+
+/* ============================================================
+   Стеклянные кнопки и поверхности (стиль Uiverse "shokat_2650")
+   Применяется ко всем кнопкам и ко всему прозрачному с blur.
+   ============================================================ */
+
+@property --gb-angle-1 {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: -75deg;
+}
+@property --gb-angle-2 {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: -45deg;
+}
+
+:root {
+  --gb-time: 400ms;
+  --gb-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --gb-border: clamp(1px, 0.0625em, 3px);
+}
+
+/* ----- стеклянная база для всех кнопок ----- */
+.btn,
+.btn-primary,
+.btn-soft,
+.btn-danger,
+.btn-danger-soft,
+.icon-btn,
+.chip,
+.tab-item,
+.segmented button,
+.avatar-opt,
+.theme-dot,
+.accent-dot {
+  position: relative;
+  isolation: isolate;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  transition:
+    transform var(--gb-time) var(--gb-ease),
+    box-shadow var(--gb-time) var(--gb-ease),
+    background var(--gb-time) var(--gb-ease),
+    color var(--gb-time) var(--gb-ease),
+    filter var(--gb-time) var(--gb-ease);
+}
+
+/* внутренний блик: светящаяся полоса, движется при наведении */
+.btn::before,
+.btn-primary::before,
+.btn-soft::before,
+.btn-danger::before,
+.btn-danger-soft::before,
+.icon-btn::before,
+.chip::before,
+.segmented button::before,
+.avatar-opt::before,
+.theme-dot::before,
+.accent-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    var(--gb-angle-2),
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.55) 40% 50%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  background-size: 200% 200%;
+  background-position: 0% 50%;
+  background-repeat: no-repeat;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  opacity: 0.85;
+  transition:
+    background-position calc(var(--gb-time) * 1.25) var(--gb-ease),
+    --gb-angle-2 calc(var(--gb-time) * 1.25) var(--gb-ease);
+}
+.btn:hover::before,
+.btn-primary:hover::before,
+.btn-soft:hover::before,
+.btn-danger:hover::before,
+.btn-danger-soft:hover::before,
+.icon-btn:hover::before,
+.chip:hover::before,
+.segmented button:hover::before,
+.avatar-opt:hover::before,
+.theme-dot:hover::before,
+.accent-dot:hover::before {
+  background-position: 30% 50%;
+}
+.btn:active::before,
+.btn-primary:active::before,
+.btn-soft:active::before,
+.btn-danger:active::before,
+.btn-danger-soft:active::before,
+.icon-btn:active::before,
+.chip:active::before,
+.segmented button:active::before,
+.avatar-opt:active::before,
+.theme-dot:active::before,
+.accent-dot:active::before {
+  background-position: 55% 12%;
+  --gb-angle-2: -15deg;
+}
+
+/* анимированное кольцо-обводка (conic gradient через mask) */
+.btn::after,
+.btn-primary::after,
+.btn-soft::after,
+.btn-danger::after,
+.btn-danger-soft::after,
+.icon-btn::after,
+.chip::after,
+.tab-item::after,
+.segmented button::after,
+.avatar-opt::after,
+.theme-dot::after,
+.accent-dot::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  top: calc(0% - var(--gb-border) / 2);
+  left: calc(0% - var(--gb-border) / 2);
+  width: calc(100% + var(--gb-border));
+  height: calc(100% + var(--gb-border));
+  padding: var(--gb-border);
+  box-sizing: border-box;
+  border-radius: inherit;
+  background:
+    conic-gradient(
+      from var(--gb-angle-1) at 50% 50%,
+      color-mix(in srgb, var(--text) 30%, transparent),
+      transparent 5% 40%,
+      color-mix(in srgb, var(--text) 30%, transparent) 50%,
+      transparent 60% 95%,
+      color-mix(in srgb, var(--text) 30%, transparent)
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  transition:
+    --gb-angle-1 600ms ease,
+    opacity var(--gb-time) var(--gb-ease);
+}
+.btn:hover::after,
+.btn-soft:hover::after,
+.btn-danger-soft:hover::after,
+.icon-btn:hover::after,
+.chip:hover::after,
+.segmented button:hover::after,
+.avatar-opt:hover::after,
+.theme-dot:hover::after,
+.accent-dot:hover::after {
+  --gb-angle-1: -125deg;
+}
+.btn:active::after {
+  --gb-angle-1: -75deg;
+}
+
+/* стеклянный фон прозрачных кнопок (мягкие/прозрачные) */
+.btn-soft,
+.btn-danger-soft,
+.icon-btn,
+.chip,
+.tab-item,
+.segmented button,
+.avatar-opt,
+.theme-dot,
+.accent-dot {
+  background:
+    linear-gradient(-75deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08))
+    color-mix(in srgb, var(--accent) 13%, transparent);
+  backdrop-filter: blur(clamp(2px, 0.125em, 6px)) saturate(1.3);
+  -webkit-backdrop-filter: blur(clamp(2px, 0.125em, 6px)) saturate(1.3);
+  box-shadow:
+    inset 0 0.125em 0.125em rgba(0, 0, 0, 0.05),
+    inset 0 -0.125em 0.125em rgba(255, 255, 255, 0.5),
+    0 0.25em 0.45em -0.25em rgba(0, 0, 0, 0.25);
+}
+
+/* тень спрессованного состояния */
+.btn:active,
+.btn-primary:active,
+.btn-soft:active,
+.btn-danger:active,
+.btn-danger-soft:active,
+.icon-btn:active,
+.chip:active,
+.segmented button:active {
+  transform: scale(0.965) translateY(1px);
+  box-shadow:
+    inset 0 0.125em 0.125em rgba(0, 0, 0, 0.05),
+    inset 0 -0.125em 0.125em rgba(255, 255, 255, 0.5),
+    0 0.125em 0.125em -0.125em rgba(0, 0, 0, 0.2),
+    0 0.225em 0.05em 0 rgba(0, 0, 0, 0.06),
+    0 0.25em 0 0 rgba(255, 255, 255, 0.7),
+    inset 0 0.25em 0.05em 0 rgba(0, 0, 0, 0.15);
+}
+
+/* primary/danger сохраняют свой цвет, но получают стеклянные блики */
+.btn-primary {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 88%, white),
+    var(--accent)
+  );
+  box-shadow:
+    0 0.35em 0.9em -0.3em color-mix(in srgb, var(--accent) 55%, transparent),
+    inset 0 0.125em 0.125em rgba(255, 255, 255, 0.35),
+    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.18);
+}
+.btn-danger {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--red) 86%, white),
+    var(--red)
+  );
+  box-shadow:
+    0 0 0.9em -0.3em color-mix(in srgb, var(--red) 50%, transparent),
+    inset 0 0.125em 0.125em rgba(255, 255, 255, 0.35),
+    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.18);
+}
+
+/* активные состояния пользуются светящимся кольцом */
+.chip.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow:
+    0 0.2em 0.7em -0.3em color-mix(in srgb, var(--accent) 55%, transparent),
+    inset 0 0.125em 0.125em rgba(255, 255, 255, 0.4),
+    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.12);
+}
+.segmented button.active {
+  background: var(--card);
+  box-shadow:
+    0 1px 6px rgba(0, 0, 0, 0.12),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.7);
+}
+.tab-item {
+  background:
+    linear-gradient(-75deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.08))
+    color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.tab-item.active::after {
+  --gb-angle-1: -105deg;
+}
+
+/* ----- Стеклянные карточки (прозрачные с blur) ----- */
+.glass,
+.request-banner,
+.settings-card,
+.couple-card,
+.presence-card,
+.info-cell,
+.task-card,
+.profile-card,
+.danger-confirm {
+  background:
+    linear-gradient(140deg, color-mix(in srgb, #fff 16%, transparent), transparent 45%),
+    var(--glass);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 60%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, #000 4%, transparent),
+    0 8px 28px rgba(0, 0, 0, 0.08);
+}
+
+/* галеченье на свет при наведении для модальных/активных карточек */
+
+@media (hover: none), (pointer: coarse) {
+  .btn::before,
+  .btn-primary::before,
+  .btn-soft::before,
+  .btn-danger::before,
+  .btn-danger-soft::before,
+  .icon-btn::before,
+  .chip::before,
+  .segmented button::before,
+  .avatar-opt::before,
+  .theme-dot::before,
+  .accent-dot::before {
+    background-position: 0% 50%;
+    --gb-angle-2: -45deg;
+  }
+  .btn::after,
+  .btn-soft::after,
+  .btn-danger-soft::after,
+  .icon-btn::after,
+  .chip::after,
+  .segmented button::after,
+  .avatar-opt::after,
+  .theme-dot::after,
+  .accent-dot::after {
+    --gb-angle-1: -75deg;
+  }
+}
+
+/* ============================================================
+   НЕО-БРУТАЛИЗМ — включается тумблером «Брутал-режим»
+   в «Основных настройках» (localStorage: together_brutal).
+   Полностью другой вид: резкие рамки, тени-сдвиги, коробчатые
+   кнопки, терминальные поля ввода, пилюльное меню, свои тумблеры.
+   ============================================================ */
+
+.app.brutal {
+  --brutal-ink: #1b1b1b;
+  --brutal-paper: #efe9dc;
+  --brutal-card: #ffffff;
+  --brutal-muted: #6f675a;
+  --glass: var(--brutal-card);
+  --card: var(--brutal-card);
+  --bg: var(--brutal-paper);
+  --bg-grouped: var(--brutal-paper);
+  --text: var(--brutal-ink);
+  --text2: var(--brutal-muted);
+  --hairline: var(--brutal-ink);
+  --border: var(--brutal-ink);
+  --separator: var(--brutal-muted);
+  --nav-bg: var(--brutal-card);
+  --tab-bg: var(--brutal-card);
+  --glass-blur: 0px;
+  --radius-card: 10px;
+  --radius-small: 6px;
+  --radius-input: 5px;
+  --radius-btn: 10px;
+  --shadow-card: 5px 5px 0 var(--brutal-ink);
+}
+
+/* плоская бумага вместо mesh-градиента и сетки */
+.app.brutal::before {
+  background: var(--brutal-paper);
+}
+.app.brutal::after {
+  opacity: 0;
+}
+.app.brutal.has-bg::before {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--brutal-paper) 55%, transparent), color-mix(in srgb, var(--brutal-paper) 55%, transparent)),
+    var(--bg-img, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* выключаем стеклянные блики (sheen/кольца) — в брутале не нужны */
+.app.brutal :is(.btn, .btn-primary, .btn-soft, .btn-danger, .btn-danger-soft, .icon-btn, .chip, .tab-item, .segmented button, .avatar-opt, .theme-dot, .accent-dot)::before,
+.app.brutal :is(.btn, .btn-primary, .btn-soft, .btn-danger, .btn-danger-soft, .icon-btn, .chip, .tab-item, .segmented button, .avatar-opt, .theme-dot, .accent-dot)::after {
+  display: none;
+}
+
+/* ----- карточки: резкая рамка + тень-сдвиг ----- */
+.app.brutal .glass {
+  background: var(--brutal-card);
+  border: 2px solid var(--brutal-ink);
+  border-radius: var(--radius-card);
+  box-shadow: 5px 5px 0 var(--brutal-ink);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ----- кнопки: коробчатые (артур_6104) ----- */
+.app.brutal .btn,
+.app.brutal .btn-primary,
+.app.brutal .btn-soft,
+.app.brutal .btn-danger,
+.app.brutal .btn-danger-soft,
+.app.brutal .icon-btn {
+  border: 3px solid var(--brutal-ink);
+  border-radius: var(--radius-btn);
+  background: #e9e3d3;
+  color: var(--brutal-ink);
+  box-shadow: 5px 5px 0 var(--brutal-ink);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  letter-spacing: 0.01em;
+}
+.app.brutal .btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.app.brutal .btn-danger {
+  background: var(--red);
+  color: #fff;
+}
+.app.brutal .btn-soft {
+  background: #e9e3d3;
+  color: var(--accent);
+}
+.app.brutal .btn-danger-soft {
+  background: #e9e3d3;
+  color: var(--red);
+}
+.app.brutal .btn:active,
+.app.brutal .btn-primary:active,
+.app.brutal .btn-soft:active,
+.app.brutal .btn-danger:active,
+.app.brutal .btn-danger-soft:active,
+.app.brutal .icon-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--brutal-ink);
+  filter: none;
+}
+
+/* ----- поля ввода: терминальные (0xnihilism) ----- */
+.app.brutal .field > input,
+.app.brutal .reschedule-box input,
+.app.brutal .search-row input,
+.app.brutal .invite-join input {
+  background: var(--brutal-card);
+  border: 3px solid var(--brutal-ink);
+  border-radius: 4px;
+  box-shadow: 5px 5px 0 var(--brutal-ink);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  color: #000;
+  transition: all 0.15s ease;
+}
+.app.brutal .field > input:hover,
+.app.brutal .reschedule-box input:hover,
+.app.brutal .search-row input:hover,
+.app.brutal .invite-join input:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--brutal-ink);
+}
+.app.brutal .field > input:focus,
+.app.brutal .reschedule-box input:focus,
+.app.brutal .search-row input:focus,
+.app.brutal .invite-join input:focus {
+  background: var(--brutal-ink);
+  color: #fff;
+  border-color: #fff;
+  box-shadow: 0 0 0 var(--brutal-ink);
+  transform: translate(3px, 3px);
+}
+
+/* ----- тумблеры: брутальный переключатель (andrew-demchenk0) ----- */
+.app.brutal .toggle {
+  background: var(--brutal-card);
+  border: 2px solid var(--brutal-ink);
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 var(--brutal-ink);
+}
+.app.brutal .toggle::after {
+  left: 0;
+  top: 0;
+  width: 27px;
+  height: 27px;
+  border: 2px solid var(--brutal-ink);
+  border-radius: 4px;
+  background: #e9e3d3;
+  box-shadow: 0 3px 0 var(--brutal-ink);
+}
+.app.brutal .toggle:checked {
+  background: var(--accent);
+}
+.app.brutal .toggle:checked::after {
+  transform: translateX(20px);
+}
+
+/* ----- меню навигации: пилюля с рамкой (LightAndy1) ----- */
+.app.brutal .tab-bar {
+  background: var(--brutal-card);
+  border: 2px solid var(--brutal-ink);
+  box-shadow: 5px 5px 0 var(--brutal-ink);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.app.brutal .tab-item {
+  border-radius: 999px;
+}
+.app.brutal .tab-item.active {
+  background: var(--brutal-ink);
+  color: var(--brutal-paper);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ----- сегмент-контрол, чипсы, точки тем/акцентов ----- */
+.app.brutal .segmented {
+  background: var(--brutal-card);
+  border: 2px solid var(--brutal-ink);
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 var(--brutal-ink);
+  backdrop-filter: none;
+}
+.app.brutal .segmented button {
+  border-radius: 4px;
+}
+.app.brutal .segmented button.active {
+  background: var(--brutal-ink);
+  color: var(--brutal-paper);
+  box-shadow: none;
+}
+.app.brutal .chip {
+  border: 2px solid var(--brutal-ink);
+  border-radius: 999px;
+  box-shadow: 4px 4px 0 var(--brutal-ink);
+  backdrop-filter: none;
+  background: var(--brutal-card);
+}
+.app.brutal .chip.active {
+  background: var(--brutal-ink);
+  color: var(--brutal-paper);
+  box-shadow: 3px 3px 0 var(--brutal-ink);
+}
+.app.brutal .chip.active .chip-count {
+  background: var(--brutal-muted);
+  color: var(--brutal-paper);
+}
+.app.brutal .theme-dot,
+.app.brutal .accent-dot {
+  border: 2px solid var(--brutal-ink);
+  border-radius: 6px;
+  box-shadow: 3px 3px 0 var(--brutal-ink);
+}
+.app.brutal .avatar-opt {
+  border: 2px solid var(--brutal-ink);
+  border-radius: 6px;
+  box-shadow: 3px 3px 0 var(--brutal-ink);
+}
+
+/* ----- модалки ----- */
+.app.brutal .modal {
+  background: var(--brutal-card);
+  border: 2px solid var(--brutal-ink);
+  box-shadow: 7px 7px 0 var(--brutal-ink);
+  border-radius: 12px;
 }

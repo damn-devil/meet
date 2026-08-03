@@ -17,7 +17,7 @@ describe('theme', () => {
   })
 
   it('has all expected themes', () => {
-    expect(Object.keys(THEMES)).toEqual(expect.arrayContaining(['auto', 'light', 'dark', 'midnight', 'rose', 'ocean']))
+    expect(Object.keys(THEMES)).toEqual(['auto', 'light', 'dark'])
     expect(Object.keys(ACCENTS).length).toBeGreaterThanOrEqual(6)
   })
 })

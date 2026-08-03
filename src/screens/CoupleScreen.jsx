@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useStore } from '../store.jsx'
 import { Avatar } from '../components/Avatar.jsx'
 import { Icon } from '../components/Icon.jsx'
@@ -19,13 +19,6 @@ export function CoupleScreen() {
   const [sendingTo, setSendingTo] = useState(null)
   const [confirmBreak, setConfirmBreak] = useState(false)
   const [breaking, setBreaking] = useState(false)
-  const [msgText, setMsgText] = useState('')
-  const [sendingMsg, setSendingMsg] = useState(false)
-  const chatRef = useRef(null)
-
-  useEffect(() => {
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
-  }, [state.messages])
 
   const searchUsers = async () => {
     if (!searchQuery.trim()) return
@@ -82,24 +75,11 @@ export function CoupleScreen() {
     }
   }
 
-  const sendMessage = async () => {
-    if (!msgText.trim() || sendingMsg) return
-    setSendingMsg(true)
-    try {
-      await actions.sendMessage(msgText)
-      setMsgText('')
-    } catch (e) {
-      actions.toast(e.message, 'error')
-    } finally {
-      setSendingMsg(false)
-    }
-  }
-
   return (
     <div className="screen couple-screen">
       <header className="screen-header">
         <h1>Пара</h1>
-        <p className="screen-sub">Статус пары, чат и приглашения</p>
+        <p className="screen-sub">Статус пары и приглашения</p>
       </header>
 
       {inCouple ? (
@@ -134,38 +114,6 @@ export function CoupleScreen() {
                 )}
               </div>
             )}
-          </div>
-
-          <div className="settings-card glass chat-card">
-            <h3 className="card-title">Чат</h3>
-            <div className="chat-list" ref={chatRef}>
-              {state.messages.length === 0 && (
-                <p className="chat-empty">Напишите что-нибудь партнёру 😊</p>
-              )}
-              {state.messages.map((m) => (
-                <div key={m.id} className={`chat-msg ${m.user_id === me?.id ? 'mine' : ''}`}>
-                  <div className="chat-msg-head">
-                    <span className="chat-msg-avatar">
-                      <Avatar url={m.avatar_url} emoji={m.avatar || '🙂'} size="comment" alt={m.name} />
-                    </span>
-                    <span className="chat-msg-name">{m.user_id === me?.id ? 'Вы' : m.name}</span>
-                    <span className="chat-msg-time">
-                      {new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <div className="chat-msg-text">{m.text}</div>
-                </div>
-              ))}
-            </div>
-            <div className="chat-input">
-              <input
-                value={msgText}
-                onChange={(e) => setMsgText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                placeholder="Сообщение..."
-              />
-              <button className="btn btn-primary" onClick={sendMessage} disabled={sendingMsg || !msgText.trim()}>➤</button>
-            </div>
           </div>
 
           <div className="danger-zone">

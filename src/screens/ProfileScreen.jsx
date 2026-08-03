@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store.jsx'
 import { THEMES, ACCENTS, accentValue } from '../lib/theme.js'
-import { applyTheme, safeSet, savedAccent } from '../lib/theme.js'
+import { applyTheme, safeSet, savedAccent, savedTheme } from '../lib/theme.js'
 import { Avatar } from '../components/Avatar.jsx'
 import { CropAvatar } from '../components/CropAvatar.jsx'
 
@@ -202,7 +202,6 @@ export function ProfileScreen() {
 
 function SettingsPanel() {
   const { state, actions } = useStore()
-  const me = state.user
 
   const [notifStatus, setNotifStatus] = useState(
     'Notification' in window ? Notification.permission : 'unsupported'
@@ -219,13 +218,13 @@ function SettingsPanel() {
   }
 
   const changeTheme = (theme) => {
-    actions.updateMe({ theme })
+    safeSet('together_theme', theme)
     applyTheme(theme, savedAccent())
   }
 
   const changeAccent = (accent) => {
     const hex = accentValue(accent)
-    applyTheme(me?.theme || 'auto', hex)
+    applyTheme(savedTheme(), hex)
     safeSet('together_accent', hex)
     actions.updateMe({ accent: hex }).catch(() => actions.toast('Не удалось сохранить цвет', 'error'))
   }
@@ -268,7 +267,7 @@ function SettingsPanel() {
           {Object.entries(THEMES).map(([key, t]) => (
             <button
               key={key}
-              className={`theme-dot ${me?.theme === key ? 'active' : ''}`}
+              className={`theme-dot ${savedTheme() === key ? 'active' : ''}`}
               style={!t.isAuto ? { background: t.bg, color: t.text, border: `1px solid ${t.border}` } : undefined}
               onClick={() => changeTheme(key)}
             >
@@ -314,6 +313,21 @@ function SettingsPanel() {
             <button className="btn btn-danger-soft" onClick={clearBg}>Сбросить фон</button>
           )}
         </div>
+      </div>
+
+      <div className="setting-row">
+        <div className="setting-row-info">
+          <span className="setting-row-title">Брутал-режим</span>
+          <span className="setting-row-sub">Резкие рамки, тени и терминальные поля — совсем другой вид</span>
+        </div>
+        <input
+          type="checkbox"
+          className="toggle"
+          role="switch"
+          aria-label="Брутал-режим"
+          checked={state.brutal}
+          onChange={(e) => actions.setBrutal(e.target.checked)}
+        />
       </div>
 
       <div className="setting-row">
