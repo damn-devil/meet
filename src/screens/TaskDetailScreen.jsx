@@ -31,9 +31,9 @@ export function TaskDetailScreen({ taskId }) {
 
   const meta = statusMeta(task.status)
   const mapUrl = extractMapUrl(task.description)
-  const descText = mapUrl
-    ? task.description.replace(/\s*🗺\s*https?:\/\/\S+$/i, '').trim()
-    : (task.description || '')
+  const descText = task.description
+    ? (mapUrl ? task.description.replace(mapUrl, '').replace(/🗺/g, '') : task.description).trim()
+    : ''
   const myCheckin = task.checkins.find((c) => c.user_id === me?.id)
   const partnerCheckin = task.checkins.find((c) => c.user_id === partner?.id)
   const pendingAgreement = task.agreements.find((a) => a.status === 'pending')
