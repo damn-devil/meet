@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react'
 import {
   api, subscribeTasks, unsubscribeTasks, subscribeRequests, unsubscribeRequests,
+  subscribeFreeDays, unsubscribeFreeDays,
   hasSession, clearToken,
 } from './api.js'
 import { applyTheme, savedTheme, savedAccent, safeSet, safeGet } from './lib/theme.js'
@@ -12,6 +13,7 @@ const initialState = {
   couple: null,
   tasks: [],
   requests: [],
+  freeDays: [],
   stats: { completed: 0, missed: 0, cancelled: 0, avgRating: null },
   view: 'tasks',
   selectedTask: null,
@@ -50,6 +52,8 @@ function reducer(state, action) {
       return { ...state, bg: action.bg }
     case 'SET_REQUESTS':
       return { ...state, requests: action.requests }
+    case 'SET_FREE_DAYS':
+      return { ...state, freeDays: action.days }
     case 'SET_BRUTAL':
       return { ...state, brutal: action.brutal }
     case 'SET_DARK':
@@ -94,6 +98,8 @@ export function StoreProvider({ children }) {
         dispatch({ type: 'SET_COUPLE', couple: payload })
       }
     })
+    subscribeFreeDays(coupleId, () => refreshFreeDays())
+    refreshFreeDays()
   }
 
   const syncLocalPrefs = (user) => {
@@ -105,6 +111,13 @@ export function StoreProvider({ children }) {
     try {
       const stats = await api.stats()
       dispatch({ type: 'SET_STATS', stats })
+    } catch {}
+  }
+
+  const refreshFreeDays = async () => {
+    try {
+      const days = await api.freeDays()
+      dispatch({ type: 'SET_FREE_DAYS', days: days || [] })
     } catch {}
   }
 
@@ -212,6 +225,7 @@ export function StoreProvider({ children }) {
       } catch {}
       unsubscribeTasks()
       unsubscribeRequests()
+      unsubscribeFreeDays()
       coupleIdRef.current = null
       dispatch({ type: 'LOGOUT' })
     },
@@ -223,6 +237,7 @@ export function StoreProvider({ children }) {
       } catch {}
       unsubscribeTasks()
       unsubscribeRequests()
+      unsubscribeFreeDays()
       coupleIdRef.current = null
       dispatch({ type: 'LOGOUT' })
     },
@@ -284,6 +299,10 @@ export function StoreProvider({ children }) {
       const task = await api.createTask(body)
       dispatch({ type: 'UPSERT_TASK', task })
       return task
+    },
+    setFreeDay: async (day, free) => {
+      await api.setFreeDay(day, free)
+      await refreshFreeDays()
     },
     checkin: async (id) => {
       const data = await api.checkin(id)

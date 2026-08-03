@@ -12,11 +12,14 @@ vi.mock('../api.js', () => ({
   unsubscribeTasks: vi.fn(),
   subscribeRequests: () => ({ subscribe: vi.fn() }),
   unsubscribeRequests: vi.fn(),
+  subscribeFreeDays: () => ({ subscribe: vi.fn() }),
+  unsubscribeFreeDays: vi.fn(),
   api: {
     me: vi.fn(),
     tasks: vi.fn(),
     stats: vi.fn(),
     myRequests: vi.fn(),
+    freeDays: vi.fn(() => Promise.resolve([])),
   },
 }))
 

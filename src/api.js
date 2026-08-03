@@ -137,10 +137,13 @@ export const api = {
   cancelCoupleRequest: (id) => rpc('cancel_couple_request', { p_request_id: id }),
   breakUpCouple: () => rpc('break_up_couple'),
   stats: () => rpc('get_stats'),
+  freeDays: () => rpc('get_free_days'),
+  setFreeDay: (day, free) => rpc('set_free_day', { p_day: day, p_free: free }),
 }
 
 let channel = null
 let requestsChannel = null
+let freeDaysChannel = null
 
 async function fetchTask(id) {
   try {
@@ -202,4 +205,23 @@ export function subscribeRequests(onEvent) {
 export function unsubscribeRequests() {
   if (requestsChannel) supabase?.removeChannel(requestsChannel)
   requestsChannel = null
+}
+
+export function subscribeFreeDays(coupleId, onEvent) {
+  if (!supabase) return null
+  unsubscribeFreeDays()
+  freeDaysChannel = supabase
+    .channel(`free-days:${coupleId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'free_days', filter: `couple_id=eq.${coupleId}` },
+      () => onEvent()
+    )
+    .subscribe()
+  return freeDaysChannel
+}
+
+export function unsubscribeFreeDays() {
+  if (freeDaysChannel) supabase?.removeChannel(freeDaysChannel)
+  freeDaysChannel = null
 }

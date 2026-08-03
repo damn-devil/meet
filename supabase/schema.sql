@@ -854,3 +854,72 @@ create policy "avatars_update" on storage.objects
 drop policy if exists "avatars_delete" on storage.objects;
 create policy "avatars_delete" on storage.objects
   for delete to authenticated using (bucket_id = 'avatars' and owner = auth.uid());
+-- ============================================================
+-- Календарь свободных дней
+-- ============================================================
+
+create table if not exists public.free_days (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references public.couples(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  day date not null,
+  created_at timestamptz not null default now(),
+  unique (couple_id, user_id, day)
+);
+
+alter table public.free_days enable row level security;
+
+drop policy if exists "free_days_select" on public.free_days;
+create policy "free_days_select" on public.free_days
+  for select to authenticated using (couple_id = auth_couple_id());
+
+drop policy if exists "free_days_insert" on public.free_days;
+create policy "free_days_insert" on public.free_days
+  for insert to authenticated with check (
+    couple_id = auth_couple_id() and user_id = auth.uid()
+  );
+
+drop policy if exists "free_days_delete" on public.free_days;
+create policy "free_days_delete" on public.free_days
+  for delete to authenticated using (
+    couple_id = auth_couple_id() and user_id = auth.uid()
+  );
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'free_days') then
+    alter publication supabase_realtime add table public.free_days;
+  end if;
+end
+$$;
+
+create or replace function public.get_free_days()
+returns jsonb
+language sql security definer set search_path = public
+as $$
+  select coalesce(
+    jsonb_agg(jsonb_build_object('user_id', f.user_id, 'day', f.day) order by f.day),
+    '[]'::jsonb
+  )
+  from public.free_days f
+  where f.couple_id = public.auth_couple_id()
+$$;
+
+create or replace function public.set_free_day(p_day date, p_free boolean)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_couple_id uuid := public.auth_couple_id();
+begin
+  if v_couple_id is null then raise exception 'Vy ne v pare'; end if;
+  if p_free then
+    insert into public.free_days (couple_id, user_id, day)
+    values (v_couple_id, auth.uid(), p_day)
+    on conflict (couple_id, user_id, day) do nothing;
+  else
+    delete from public.free_days
+    where couple_id = v_couple_id and user_id = auth.uid() and day = p_day;
+  end if;
+end
+$$;

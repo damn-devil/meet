@@ -2450,3 +2450,156 @@ select {
 .app.brutal .card-agreement-text {
   color: var(--brutal-ink);
 }
+/* ============ Календарь ============ */
+.calendar-card {
+  padding: 16px;
+  border-radius: var(--radius-card);
+  margin-bottom: 16px;
+}
+.calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.calendar-title {
+  font-size: 16px;
+  text-transform: capitalize;
+  color: var(--text);
+}
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.day-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.15s var(--spring);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.day-cell:active {
+  transform: scale(0.88);
+}
+.day-cell.is-other {
+  color: color-mix(in srgb, var(--text2) 40%, transparent);
+  pointer-events: none;
+}
+.day-cell .day-num {
+  line-height: 1;
+}
+.day-cell .day-dot {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.day-cell.is-mine {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+}
+.day-cell.is-mine .day-dot {
+  background: var(--accent);
+}
+.day-cell.is-theirs {
+  background: rgba(255, 144, 96, 0.18);
+  color: #ff9d73;
+}
+.day-cell.is-theirs .day-dot {
+  background: #ff8a65;
+}
+.day-cell.is-both {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent) 50%, rgba(255, 138, 96, 0.2) 50%);
+}
+.day-cell.is-both .day-dot {
+  background: linear-gradient(90deg, var(--accent) 50%, #ff8a65 50%);
+}
+.day-cell.is-today {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
+  font-weight: 700;
+}
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+  font-size: 12px;
+  color: var(--text2);
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-item i {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.dot-mine {
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.dot-theirs {
+  background: #ff8a65;
+}
+.dot-both {
+  background: linear-gradient(90deg, var(--accent) 50%, #ff8a65 50%);
+}
+
+/* брутал */
+.app.brutal .cal-cell,
+.app.brutal .day-cell {
+  background: var(--brutal-paper);
+  color: var(--brutal-ink);
+  border-radius: 2px;
+}
+.app.brutal .day-cell.is-mine {
+  background: var(--brutal-ink);
+  color: var(--brutal-paper);
+  box-shadow: 2px 2px 0 var(--brutal-btn-sh);
+}
+.app.brutal .day-cell.is-theirs {
+  background: var(--brutal-muted);
+  color: var(--brutal-ink);
+}
+.app.brutal .day-cell.is-both {
+  background: rebeccapurple;
+  color: white;
+  box-shadow: 2px 2px 0 var(--brutal-btn-sh);
+}
+.app.brutal .day-cell.is-today {
+  box-shadow: inset 0 0 0 2px var(--brutal-ink);
+}
+.app.brutal .calendar-card {
+  background: var(--brutal-card);
+  border: 2px solid var(--brutal-btn-bd);
+  border-radius: 2px;
+}
+.app.brutal .legend-item i {
+  border-radius: 0;
+  border: 1px solid var(--brutal-btn-bd);
+}
