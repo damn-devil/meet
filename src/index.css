@@ -1365,35 +1365,65 @@ select {
   font-size: 12px;
   color: var(--text2);
 }
+/* Жидкий переключатель (gooey liquid toggle) */
 .toggle {
   position: relative;
-  width: 51px;
-  height: 31px;
+  width: 54px;
+  height: 32px;
   border-radius: 999px;
-  background: var(--separator);
-  transition: background 0.22s var(--ease);
+  background: transparent;
   flex-shrink: 0;
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
+  filter: url(#toggle-goo);
+  transition: transform 0.18s var(--spring);
 }
+.toggle:active {
+  transform: scale(1.06);
+}
+/* трек — подложка */
+.toggle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--separator);
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.28),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.4);
+  transition: background 0.3s var(--ease);
+}
+/* жидкость, следующая за бегунком */
 .toggle::after {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 27px;
-  height: 27px;
+  top: 50%;
+  left: 3px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.28);
-  transition: transform 0.22s var(--spring);
+  transform: translateY(-50%);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.12);
+  transition: left 0.32s var(--spring);
 }
-.toggle:checked {
+/* хвост жидкости, «перетекающей» на сторону вкл */
+.toggle::selection {
+  background: transparent;
+}
+.toggle:checked::before {
   background: var(--green);
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.25),
+    0 0 12px color-mix(in srgb, var(--green) 45%, transparent);
 }
 .toggle:checked::after {
-  transform: translateX(20px);
+  left: calc(100% - 29px);
 }
 
 .setting-group input[type="range"] {
@@ -2015,15 +2045,39 @@ select {
 .info-cell,
 .task-card,
 .danger-confirm {
+  position: relative;
   background:
-    linear-gradient(140deg, color-mix(in srgb, var(--glass-tint) 55%, transparent), transparent 55%),
+    linear-gradient(140deg, color-mix(in srgb, var(--glass-tint) 60%, transparent), transparent 52%),
+    linear-gradient(315deg, color-mix(in srgb, #fff 6%, transparent), transparent 42%),
     var(--glass);
   backdrop-filter: blur(var(--glass-blur)) saturate(1.9);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.9);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--text) 9%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--text) 5%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--text) 6%, transparent),
+    inset 1px 0 1px -1px color-mix(in srgb, #fff 35%, transparent),
     var(--shadow-card);
+}
+
+/* диагональный блик-линза сверху-слева (как преломление в стекле) */
+.glass::before,
+.request-banner::before,
+.settings-card::before,
+.couple-card::before,
+.presence-card::before,
+.info-cell::before,
+.task-card::before,
+.danger-confirm::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(150deg, color-mix(in srgb, #fff 18%, transparent), transparent 34%),
+    radial-gradient(120% 60% at 80% -10%, color-mix(in srgb, #fff 14%, transparent), transparent 55%);
+  opacity: 0.55;
+  mix-blend-mode: screen;
 }
 
 /* ============================================================
@@ -2105,6 +2159,9 @@ select {
   box-shadow: 5px 5px 0 var(--brutal-ink);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+.app.brutal :is(.glass, .request-banner, .settings-card, .couple-card, .presence-card, .info-cell, .task-card, .danger-confirm)::before {
+  display: none;
 }
 
 /* ----- шапка экрана: сплошная бумага, без прозрачностей ----- */
@@ -2200,26 +2257,35 @@ select {
 
 /* ----- тумблеры: брутальный переключатель (andrew-demchenk0) ----- */
 .app.brutal .toggle {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  filter: none;
+}
+.app.brutal .toggle::before {
   background: var(--brutal-card);
   border: 2px solid var(--brutal-ink);
   border-radius: 6px;
   box-shadow: 4px 4px 0 var(--brutal-ink);
 }
 .app.brutal .toggle::after {
-  left: 0;
-  top: 0;
-  width: 27px;
-  height: 27px;
+  left: 2px;
+  top: 50%;
+  width: 26px;
+  height: 26px;
   border: 2px solid var(--brutal-ink);
   border-radius: 4px;
   background: #e9e3d3;
   box-shadow: 0 3px 0 var(--brutal-ink);
 }
-.app.brutal .toggle:checked {
+.app.brutal .toggle:checked::before {
   background: var(--accent);
+  border-color: var(--brutal-ink);
+  box-shadow: 3px 3px 0 var(--brutal-ink);
 }
 .app.brutal .toggle:checked::after {
-  transform: translateX(20px);
+  left: calc(100% - 28px);
 }
 
 /* ----- меню навигации: квадратные кнопки без общего контейнера ----- */
