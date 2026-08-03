@@ -412,9 +412,28 @@ as $$
   where t.couple_id = public.auth_couple_id()
 $$;
 
--- Убираем старую сигнатуру с гео-полями (place_name/address/lat/lng),
--- иначе Postgres не сможет выбрать между перегрузками create_task.
-drop function if exists public.create_task(text, text, text, text, double precision, double precision, timestamptz);
+-- Убираем ВСЕ перегрузки create_task (и старую с гео-полями),
+-- иначе Postgres не сможет выбрать между ними при вызове.
+drop function if exists public.create_task(text, text, text, text, double precision, double precision, timestamptz) cascade;
+drop function if exists public.create_task(text, text, text, text, double precision, double precision) cascade;
+drop function if exists public.create_task(text, text, timestamptz) cascade;
+drop function if exists public.create_task(text, text) cascade;
+drop function if exists public.create_task(text) cascade;
+
+-- Финальная страховка: удаляем все оставшиеся функции с именем create_task,
+-- какие бы сигнатуры у них ни были.
+do $$
+declare r record;
+begin
+  for r in
+    select p.oid::regprocedure as sig
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'create_task'
+  loop
+    execute 'drop function ' || r.sig || ' cascade';
+  end loop;
+end $$;
 
 create or replace function public.create_task(
   p_title text, p_description text default '', p_scheduled_at timestamptz default null

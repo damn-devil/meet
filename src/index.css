@@ -211,7 +211,7 @@ select {
   }
 }
 
-/* iOS large-title navigation bar */
+/* iOS large-title navigation bar: сильное размытие сверху, затухает вниз */
 .screen-header {
   position: sticky;
   top: 0;
@@ -222,10 +222,16 @@ select {
   gap: 12px;
   margin: -20px -16px 18px;
   padding: calc(20px + env(safe-area-inset-top, 0px)) 16px 14px;
-  background: color-mix(in srgb, var(--bg) 72%, transparent);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
-  border-bottom: 1px solid var(--hairline);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg) 92%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 78%, transparent) 38%,
+    color-mix(in srgb, var(--bg) 48%, transparent) 68%,
+    color-mix(in srgb, var(--bg) 0%, transparent) 100%
+  );
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.7);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.7);
+  border-bottom: none;
 }
 .screen-header h1 {
   font-size: 34px;
@@ -2013,6 +2019,17 @@ select {
     var(--shadow-card);
 }
 
+/* ----- Карточки профиля: «левитируют» отдельно от фона ----- */
+.profile-screen .profile-card,
+.profile-screen .settings-card,
+.profile-screen .stat-card {
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 18px 44px -14px rgba(0, 0, 0, 0.3);
+}
+
 /* ============================================================
    НЕО-БРУТАЛИЗМ — включается тумблером «Брутал-режим»
    в «Основных настройках» (localStorage: together_brutal).
@@ -2042,17 +2059,29 @@ select {
   --radius-input: 5px;
   --radius-btn: 10px;
   --shadow-card: 5px 5px 0 var(--brutal-ink);
+  --brutal-btn-bg: #e9e3d3;
+  --brutal-btn-fg: var(--brutal-ink);
+  --brutal-btn-bd: var(--brutal-ink);
+  --brutal-btn-sh: var(--brutal-ink);
+  --brutal-field-bg: var(--brutal-card);
+  --brutal-field-fg: var(--brutal-ink);
 }
 
-/* тёмная тема в брутале: инвертируем бумагу/кард */
+/* тёмная тема в брутале: инвертируем бумагу/кард и кнопки */
 .app.brutal.is-dark {
   --brutal-ink: #f2ede0;
   --brutal-paper: #141414;
   --brutal-card: #222222;
   --brutal-muted: #9a9080;
+  --brutal-btn-bg: #000;
+  --brutal-btn-fg: #fff;
+  --brutal-btn-bd: #fff;
+  --brutal-btn-sh: #fff;
+  --brutal-field-bg: #000;
+  --brutal-field-fg: #fff;
 }
 
-/* плоская бумага вместо mesh-градиента и сетки */
+/* плоская бумага вместо mesh-градиента и сетки (без прозрачностей) */
 .app.brutal::before {
   background: var(--brutal-paper);
 }
@@ -2060,9 +2089,7 @@ select {
   opacity: 0;
 }
 .app.brutal.has-bg::before {
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--brutal-paper) 55%, transparent), color-mix(in srgb, var(--brutal-paper) 55%, transparent)),
-    var(--bg-img, none);
+  background: var(--bg-img, var(--brutal-paper));
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -2084,18 +2111,25 @@ select {
   -webkit-backdrop-filter: none;
 }
 
-/* ----- кнопки: коробчатые (артур_6104) ----- */
+/* ----- шапка экрана: сплошная бумага, без прозрачностей ----- */
+.app.brutal .screen-header {
+  background: var(--brutal-paper);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ----- кнопки: коробчатые (артур_6104), цвета из темы ----- */
 .app.brutal .btn,
 .app.brutal .btn-primary,
 .app.brutal .btn-soft,
 .app.brutal .btn-danger,
 .app.brutal .btn-danger-soft,
 .app.brutal .icon-btn {
-  border: 3px solid var(--brutal-ink);
+  border: 3px solid var(--brutal-btn-bd);
   border-radius: var(--radius-btn);
-  background: #e9e3d3;
-  color: var(--brutal-ink);
-  box-shadow: 5px 5px 0 var(--brutal-ink);
+  background: var(--brutal-btn-bg);
+  color: var(--brutal-btn-fg);
+  box-shadow: 5px 5px 0 var(--brutal-btn-sh);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   letter-spacing: 0.01em;
@@ -2108,13 +2142,19 @@ select {
   background: var(--red);
   color: #fff;
 }
-.app.brutal .btn-soft {
-  background: #e9e3d3;
-  color: var(--accent);
-}
+.app.brutal .btn-soft,
 .app.brutal .btn-danger-soft {
-  background: #e9e3d3;
-  color: var(--red);
+  background: var(--brutal-btn-bg);
+  color: var(--brutal-btn-fg);
+}
+/* в тёмной теме — инверсия: чёрная площадь, белый текст, белая тень */
+.app.brutal.is-dark .btn-primary,
+.app.brutal.is-dark .btn-danger,
+.app.brutal.is-dark .btn-soft,
+.app.brutal.is-dark .btn-danger-soft,
+.app.brutal.is-dark .icon-btn {
+  background: var(--brutal-btn-bg);
+  color: var(--brutal-btn-fg);
 }
 .app.brutal .btn:active,
 .app.brutal .btn-primary:active,
@@ -2127,19 +2167,19 @@ select {
   filter: none;
 }
 
-/* ----- поля ввода: терминальные (0xnihilism) ----- */
+/* ----- поля ввода: терминальные (0xnihilism), цвета из темы ----- */
 .app.brutal .field > input,
 .app.brutal .reschedule-box input,
 .app.brutal .when-row input,
 .app.brutal .search-row input,
 .app.brutal .invite-join input {
-  background: var(--brutal-card);
-  border: 3px solid var(--brutal-ink);
+  background: var(--brutal-field-bg);
+  border: 3px solid var(--brutal-btn-bd);
   border-radius: 4px;
-  box-shadow: 5px 5px 0 var(--brutal-ink);
+  box-shadow: 5px 5px 0 var(--brutal-btn-sh);
   font-family: 'Courier New', Courier, monospace;
   font-size: 16px;
-  color: #000;
+  color: var(--brutal-field-fg);
   transition: all 0.15s ease;
 }
 .app.brutal .field > input:hover,
@@ -2148,17 +2188,17 @@ select {
 .app.brutal .search-row input:hover,
 .app.brutal .invite-join input:hover {
   transform: translate(-2px, -2px);
-  box-shadow: 7px 7px 0 var(--brutal-ink);
+  box-shadow: 7px 7px 0 var(--brutal-btn-sh);
 }
 .app.brutal .field > input:focus,
 .app.brutal .reschedule-box input:focus,
 .app.brutal .when-row input:focus,
 .app.brutal .search-row input:focus,
 .app.brutal .invite-join input:focus {
-  background: var(--brutal-ink);
-  color: #fff;
-  border-color: #fff;
-  box-shadow: 0 0 0 var(--brutal-ink);
+  background: var(--brutal-btn-bg);
+  color: var(--brutal-btn-fg);
+  border-color: var(--brutal-btn-bd);
+  box-shadow: 0 0 0 var(--brutal-btn-sh);
   transform: translate(3px, 3px);
 }
 
@@ -2186,20 +2226,34 @@ select {
   transform: translateX(20px);
 }
 
-/* ----- меню навигации: пилюля с рамкой (LightAndy1) ----- */
+/* ----- меню навигации: квадратные кнопки без общего контейнера ----- */
 .app.brutal .tab-bar {
-  background: var(--brutal-card);
-  border: 2px solid var(--brutal-ink);
-  box-shadow: 5px 5px 0 var(--brutal-ink);
+  background: none;
+  border: none;
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  padding: 0;
+  gap: 10px;
+  height: auto;
+  max-width: none;
 }
 .app.brutal .tab-item {
-  border-radius: 999px;
+  border: 2px solid var(--brutal-ink);
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 var(--brutal-ink);
+  background: var(--brutal-btn-bg);
+  color: var(--brutal-btn-fg);
+  min-width: 62px;
+  height: 48px;
+  padding: 4px 10px;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .app.brutal .tab-item.active {
   background: var(--brutal-ink);
   color: var(--brutal-paper);
+  box-shadow: 2px 2px 0 var(--brutal-btn-sh);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -2254,4 +2308,31 @@ select {
   border: 2px solid var(--brutal-ink);
   box-shadow: 7px 7px 0 var(--brutal-ink);
   border-radius: 12px;
+}
+.app.brutal .modal-overlay {
+  background: var(--brutal-paper);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.app.brutal .modal-handle {
+  background: var(--brutal-muted);
+}
+
+/* ----- тосты/уведомления в брутале ----- */
+.app.brutal .toast {
+  background: var(--brutal-card);
+  color: var(--brutal-ink);
+  border: 3px solid var(--brutal-ink);
+  border-radius: 6px;
+  box-shadow: 5px 5px 0 var(--brutal-ink);
+}
+.app.brutal .toast.success {
+  background: var(--brutal-card);
+  color: var(--green);
+  border-color: var(--brutal-ink);
+}
+.app.brutal .toast.error {
+  background: var(--brutal-card);
+  color: var(--red);
+  border-color: var(--brutal-ink);
 }

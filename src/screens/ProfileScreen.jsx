@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store.jsx'
-import { THEMES, ACCENTS, accentValue } from '../lib/theme.js'
+import { THEMES } from '../lib/theme.js'
 import { applyTheme, safeSet, savedAccent, savedTheme } from '../lib/theme.js'
 import { Avatar } from '../components/Avatar.jsx'
 import { CropAvatar } from '../components/CropAvatar.jsx'
@@ -223,14 +223,6 @@ function SettingsPanel() {
     actions.setDark(dark)
   }
 
-  const changeAccent = (accent) => {
-    const hex = accentValue(accent)
-    const dark = applyTheme(savedTheme(), hex)
-    actions.setDark(dark)
-    safeSet('together_accent', hex)
-    actions.updateMe({ accent: hex }).catch(() => actions.toast('Не удалось сохранить цвет', 'error'))
-  }
-
   const uploadBg = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -277,30 +269,6 @@ function SettingsPanel() {
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="setting-group">
-        <span className="setting-label">Акцентный цвет</span>
-        <div className="setting-options">
-          {Object.entries(ACCENTS).map(([key, color]) => (
-            <button
-              key={key}
-              className={`accent-dot ${savedAccent() === color ? 'active' : ''}`}
-              style={{ background: color }}
-              onClick={() => changeAccent(key)}
-              aria-label={key}
-            />
-          ))}
-        </div>
-        <label className="setting-custom">
-          <span>Свой цвет</span>
-          <input
-            type="color"
-            value={savedAccent()}
-            onChange={(e) => changeAccent(e.target.value)}
-            aria-label="Свой цвет акцента"
-          />
-        </label>
       </div>
 
       <div className="setting-group">
