@@ -146,11 +146,12 @@ export function TaskDetailScreen({ taskId }) {
           )}
         </div>
 
-        {task.status === 'completed' && myCheckin && partnerCheckin && (
-          <div className="completed-banner">🎉 Вы встретились! План состоялся</div>
-        )}
-        {task.status === 'completed' && myCheckin && !partnerCheckin && (
-          <div className="completed-banner">✅ Встреча состоялась</div>
+        {task.status === 'completed' && (
+          <div className="completed-check" aria-label="План состоялся">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m5 13 4 4L19 7" />
+            </svg>
+          </div>
         )}
 
         {task.status === 'completed' && task.ratings.length < 2 && (

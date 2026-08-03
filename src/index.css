@@ -2602,4 +2602,64 @@ select {
 .app.brutal .legend-item i {
   border-radius: 0;
   border: 1px solid var(--brutal-btn-bd);
+}/* зелёная галочка «план состоялся» */
+.completed-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin: 6px auto;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green);
+}
+.completed-check svg {
+  width: 34px;
+  height: 34px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ===== брутал: детали события ===== */
+.app.brutal .detail-header {
+  background: var(--brutal-paper);
+  border-bottom: 2px solid var(--brutal-ink);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.app.brutal .back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-btn);
+  border: 3px solid var(--brutal-btn-bd);
+  background: var(--brutal-btn-bg);
+  color: var(--brutal-btn-fg);
+  box-shadow: 4px 4px 0 var(--brutal-btn-sh);
+}
+.app.brutal .back-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--brutal-ink);
+}
+.app.brutal .status-pill {
+  border-radius: var(--radius-btn);
+  border: 3px solid var(--brutal-ink);
+  background: var(--brutal-paper);
+  color: var(--brutal-ink);
+  box-shadow: 3px 3px 0 var(--brutal-ink);
+  font-weight: 700;
+}
+.app.brutal .completed-check {
+  border-radius: var(--radius-btn);
+  border: 3px solid var(--brutal-ink);
+  background: var(--brutal-card);
+  color: var(--green);
+  width: 60px;
+  height: 60px;
+}
+.app.brutal.is-dark .status-pill {
+  color: var(--brutal-ink);
 }
