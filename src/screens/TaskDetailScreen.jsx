@@ -1,16 +1,8 @@
 import { useState } from 'react'
 import { useStore } from '../store.jsx'
 import { formatDateTime, statusMeta, avgRating, relativeTime } from '../lib/format.js'
+import { extractMapUrl } from '../lib/map.js'
 import { Avatar } from '../components/Avatar.jsx'
-
-function extractMapUrl(text) {
-  if (!text) return null
-  const m = text.match(/(https?:\/\/[^\s]+)/i)
-  const url = m ? m[1] : null
-  if (!url) return null
-  if (/yandex|maps\.google|2gis/i.test(url)) return url
-  return null
-}
 
 export function TaskDetailScreen({ taskId }) {
   const { state, actions } = useStore()

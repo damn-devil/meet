@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../store.jsx'
 import { formatDateTime, relativeTime, statusMeta, avgRating } from '../lib/format.js'
+import { hasMapUrl } from '../lib/map.js'
 import { AddTaskModal } from '../components/AddTaskModal.jsx'
 
 export function TasksScreen() {
@@ -84,7 +85,10 @@ function TaskCard({ task, onClick }) {
       <div className="task-card-top">
         <span className="task-icon">📝</span>
         <div className="task-card-body">
-          <h3>{task.title}</h3>
+          <h3>
+            {task.title}
+            {hasMapUrl(task.description) && <span className="task-map-badge" title="Есть точка на карте">🗺</span>}
+          </h3>
           {task.scheduled_at && <p className="task-place">{formatDateTime(task.scheduled_at)}</p>}
         </div>
         <span className="status-pill" style={{ background: `${meta.color}1a`, color: meta.color }}>
