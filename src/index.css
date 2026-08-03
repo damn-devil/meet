@@ -452,6 +452,28 @@ select {
   opacity: 0.8;
 }
 
+.when-row {
+  display: flex;
+  gap: 10px;
+}
+.when-row input {
+  flex: 1;
+  min-width: 0;
+  background: var(--glass);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-input);
+  padding: 13px 14px;
+  font-size: 17px;
+  color: var(--text1);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(var(--glass-blur));
+}
+.when-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  outline: none;
+}
+
 .error-banner {
   background: color-mix(in srgb, var(--red) 11%, transparent);
   color: var(--red);
@@ -1721,6 +1743,7 @@ select {
 .segmented,
 .segmented button.active,
 .field > input,
+.when-row input,
 .chip,
 .boot-paw,
 .icon-btn,
@@ -1807,7 +1830,7 @@ select {
     filter var(--gb-time) var(--gb-ease);
 }
 
-/* внутренний блик: светящаяся полоса, движется при наведении */
+/* внутренний блик: светящаяся полоса (статика, без hover-анимаций) */
 .btn::before,
 .btn-primary::before,
 .btn-soft::before,
@@ -1827,7 +1850,7 @@ select {
   background: linear-gradient(
     var(--gb-angle-2),
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.55) 40% 50%,
+    rgba(255, 255, 255, 0.45) 40% 50%,
     rgba(255, 255, 255, 0) 55%
   );
   background-size: 200% 200%;
@@ -1835,37 +1858,7 @@ select {
   background-repeat: no-repeat;
   mix-blend-mode: screen;
   pointer-events: none;
-  opacity: 0.85;
-  transition:
-    background-position calc(var(--gb-time) * 1.25) var(--gb-ease),
-    --gb-angle-2 calc(var(--gb-time) * 1.25) var(--gb-ease);
-}
-.btn:hover::before,
-.btn-primary:hover::before,
-.btn-soft:hover::before,
-.btn-danger:hover::before,
-.btn-danger-soft:hover::before,
-.icon-btn:hover::before,
-.chip:hover::before,
-.segmented button:hover::before,
-.avatar-opt:hover::before,
-.theme-dot:hover::before,
-.accent-dot:hover::before {
-  background-position: 30% 50%;
-}
-.btn:active::before,
-.btn-primary:active::before,
-.btn-soft:active::before,
-.btn-danger:active::before,
-.btn-danger-soft:active::before,
-.icon-btn:active::before,
-.chip:active::before,
-.segmented button:active::before,
-.avatar-opt:active::before,
-.theme-dot:active::before,
-.accent-dot:active::before {
-  background-position: 55% 12%;
-  --gb-angle-2: -15deg;
+  opacity: 0.8;
 }
 
 /* анимированное кольцо-обводка (conic gradient через mask) */
@@ -1900,29 +1893,16 @@ select {
       transparent 60% 95%,
       color-mix(in srgb, var(--text) 30%, transparent)
     ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
   pointer-events: none;
-  transition:
-    --gb-angle-1 600ms ease,
-    opacity var(--gb-time) var(--gb-ease);
+  opacity: 0.7;
 }
-.btn:hover::after,
-.btn-soft:hover::after,
-.btn-danger-soft:hover::after,
-.icon-btn:hover::after,
-.chip:hover::after,
-.segmented button:hover::after,
-.avatar-opt:hover::after,
-.theme-dot:hover::after,
-.accent-dot:hover::after {
-  --gb-angle-1: -125deg;
-}
-.btn:active::after {
-  --gb-angle-1: -75deg;
+.tab-item.active::after {
+  --gb-angle-1: -105deg;
 }
 
 /* стеклянный фон прозрачных кнопок (мягкие/прозрачные) */
@@ -2012,7 +1992,7 @@ select {
   --gb-angle-1: -105deg;
 }
 
-/* ----- Стеклянные карточки (прозрачные с blur) ----- */
+/* ----- Стеклянные карточки (liquid glass: iOS-26, tint из темы) ----- */
 .glass,
 .request-banner,
 .settings-card,
@@ -2023,42 +2003,14 @@ select {
 .profile-card,
 .danger-confirm {
   background:
-    linear-gradient(140deg, color-mix(in srgb, #fff 16%, transparent), transparent 45%),
+    linear-gradient(140deg, color-mix(in srgb, var(--glass-tint) 55%, transparent), transparent 55%),
     var(--glass);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.9);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.9);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 60%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, #000 4%, transparent),
-    0 8px 28px rgba(0, 0, 0, 0.08);
-}
-
-/* галеченье на свет при наведении для модальных/активных карточек */
-
-@media (hover: none), (pointer: coarse) {
-  .btn::before,
-  .btn-primary::before,
-  .btn-soft::before,
-  .btn-danger::before,
-  .btn-danger-soft::before,
-  .icon-btn::before,
-  .chip::before,
-  .segmented button::before,
-  .avatar-opt::before,
-  .theme-dot::before,
-  .accent-dot::before {
-    background-position: 0% 50%;
-    --gb-angle-2: -45deg;
-  }
-  .btn::after,
-  .btn-soft::after,
-  .btn-danger-soft::after,
-  .icon-btn::after,
-  .chip::after,
-  .segmented button::after,
-  .avatar-opt::after,
-  .theme-dot::after,
-  .accent-dot::after {
-    --gb-angle-1: -75deg;
-  }
+    inset 0 1px 0 color-mix(in srgb, var(--text) 9%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--text) 5%, transparent),
+    var(--shadow-card);
 }
 
 /* ============================================================
@@ -2090,6 +2042,14 @@ select {
   --radius-input: 5px;
   --radius-btn: 10px;
   --shadow-card: 5px 5px 0 var(--brutal-ink);
+}
+
+/* тёмная тема в брутале: инвертируем бумагу/кард */
+.app.brutal.is-dark {
+  --brutal-ink: #f2ede0;
+  --brutal-paper: #141414;
+  --brutal-card: #222222;
+  --brutal-muted: #9a9080;
 }
 
 /* плоская бумага вместо mesh-градиента и сетки */
@@ -2170,6 +2130,7 @@ select {
 /* ----- поля ввода: терминальные (0xnihilism) ----- */
 .app.brutal .field > input,
 .app.brutal .reschedule-box input,
+.app.brutal .when-row input,
 .app.brutal .search-row input,
 .app.brutal .invite-join input {
   background: var(--brutal-card);
@@ -2183,6 +2144,7 @@ select {
 }
 .app.brutal .field > input:hover,
 .app.brutal .reschedule-box input:hover,
+.app.brutal .when-row input:hover,
 .app.brutal .search-row input:hover,
 .app.brutal .invite-join input:hover {
   transform: translate(-2px, -2px);
@@ -2190,6 +2152,7 @@ select {
 }
 .app.brutal .field > input:focus,
 .app.brutal .reschedule-box input:focus,
+.app.brutal .when-row input:focus,
 .app.brutal .search-row input:focus,
 .app.brutal .invite-join input:focus {
   background: var(--brutal-ink);

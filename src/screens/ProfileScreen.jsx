@@ -219,12 +219,14 @@ function SettingsPanel() {
 
   const changeTheme = (theme) => {
     safeSet('together_theme', theme)
-    applyTheme(theme, savedAccent())
+    const dark = applyTheme(theme, savedAccent())
+    actions.setDark(dark)
   }
 
   const changeAccent = (accent) => {
     const hex = accentValue(accent)
-    applyTheme(savedTheme(), hex)
+    const dark = applyTheme(savedTheme(), hex)
+    actions.setDark(dark)
     safeSet('together_accent', hex)
     actions.updateMe({ accent: hex }).catch(() => actions.toast('Не удалось сохранить цвет', 'error'))
   }
@@ -268,7 +270,7 @@ function SettingsPanel() {
             <button
               key={key}
               className={`theme-dot ${savedTheme() === key ? 'active' : ''}`}
-              style={!t.isAuto ? { background: t.bg, color: t.text, border: `1px solid ${t.border}` } : undefined}
+              style={!t.isAuto ? { background: t.bg, color: t.text, border: `1px solid ${t.hairline}` } : undefined}
               onClick={() => changeTheme(key)}
             >
               {t.label}

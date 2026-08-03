@@ -5,20 +5,22 @@ export function AddTaskModal({ onClose }) {
   const { actions } = useStore()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [datetime, setDatetime] = useState('')
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
   const submit = async () => {
     setError(null)
     if (!title.trim()) return setError('Дайте плану название')
-    if (datetime && isNaN(new Date(datetime).getTime())) return setError('Неверная дата')
+    const when = date && time ? new Date(`${date}T${time}`).getTime() : null
+    if (when && isNaN(when)) return setError('Неверная дата')
     setBusy(true)
     try {
       await actions.createTask({
         title: title.trim(),
         description: description.trim(),
-        scheduled_at: datetime ? new Date(datetime).getTime() : null,
+        scheduled_at: when,
       })
       actions.toast('План создан!', 'success')
       onClose()
@@ -48,11 +50,14 @@ export function AddTaskModal({ onClose }) {
             <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Что-нибудь ещё" />
           </label>
 
-          <label className="field">
+          <div className="field">
             <span>Когда (не обязательно)</span>
-            <input type="datetime-local" value={datetime} onChange={(e) => setDatetime(e.target.value)} />
+            <div className="when-row">
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Дата" />
+              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label="Время" />
+            </div>
             <small className="field-hint">Оставьте пустым — план без времени</small>
-          </label>
+          </div>
 
           {error && <div className="error-banner">{error}</div>}
 

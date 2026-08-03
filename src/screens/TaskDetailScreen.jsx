@@ -7,6 +7,7 @@ export function TaskDetailScreen({ taskId }) {
   const { state, actions } = useStore()
   const task = state.tasks.find((t) => t.id === taskId)
   const [showReschedule, setShowReschedule] = useState(false)
+  const [newDate, setNewDate] = useState('')
   const [newTime, setNewTime] = useState('')
   const [ratingModal, setRatingModal] = useState(false)
 
@@ -41,8 +42,9 @@ export function TaskDetailScreen({ taskId }) {
   const requestAgreement = async (type) => {
     try {
       if (type === 'reschedule') {
-        if (!newTime) return actions.toast('Выберите новое время', 'error')
-        await actions.requestAgreement(task.id, 'reschedule', new Date(newTime).getTime())
+        const when = newDate && newTime ? new Date(`${newDate}T${newTime}`).getTime() : null
+        if (!when) return actions.toast('Выберите новую дату и время', 'error')
+        await actions.requestAgreement(task.id, 'reschedule', when)
         actions.toast('Запрос на перенос отправлен партнёру')
         setShowReschedule(false)
       } else {
@@ -147,7 +149,10 @@ export function TaskDetailScreen({ taskId }) {
         )}
         {canAct && showReschedule && (
           <div className="reschedule-box glass">
-            <input type="datetime-local" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
+            <div className="when-row">
+              <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} aria-label="Новая дата" />
+              <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} aria-label="Новое время" />
+            </div>
             <button className="btn btn-primary" onClick={() => requestAgreement('reschedule')}>Отправить на согласование</button>
           </div>
         )}

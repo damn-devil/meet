@@ -6,28 +6,40 @@ const THEMES = {
   light: {
     label: 'Светлая',
     bg: '#f2f2f7',
+    bgGrouped: '#e5e5ea',
     card: 'rgba(255,255,255,0.72)',
+    glass: 'rgba(255,255,255,0.55)',
     text: '#000000',
     text2: '#8e8e93',
     accent: '#007aff',
-    border: 'rgba(60,60,67,0.16)',
+    green: '#34c759',
+    red: '#ff3b30',
+    orange: '#ff9500',
+    separator: 'rgba(60,60,67,0.29)',
+    hairline: 'rgba(60,60,67,0.16)',
     navBg: 'rgba(242,242,247,0.82)',
     tabBg: 'rgba(249,249,249,0.94)',
-    glass: 'rgba(255,255,255,0.55)',
-    shadow: '0 1px 0 rgba(255,255,255,0.7) inset, 0 8px 28px rgba(0,0,0,0.07)',
+    shadowCard: '0 1px 0 rgba(255,255,255,0.7) inset, 0 8px 28px rgba(0,0,0,0.07)',
+    glassTint: 'rgba(255,255,255,0.60)',
   },
   dark: {
     label: 'Тёмная',
     bg: '#000000',
+    bgGrouped: '#1c1c1e',
     card: 'rgba(28,28,30,0.72)',
+    glass: 'rgba(44,44,48,0.60)',
     text: '#ffffff',
     text2: '#98989f',
     accent: '#0a84ff',
-    border: 'rgba(84,84,88,0.55)',
-    navBg: 'rgba(22,22,22,0.82)',
-    tabBg: 'rgba(22,22,22,0.94)',
-    glass: 'rgba(255,255,255,0.10)',
-    shadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 10px 30px rgba(0,0,0,0.55)',
+    green: '#30d158',
+    red: '#ff453a',
+    orange: '#ff9f0a',
+    separator: 'rgba(84,84,88,0.6)',
+    hairline: 'rgba(84,84,88,0.6)',
+    navBg: 'rgba(22,22,22,0.72)',
+    tabBg: 'rgba(28,28,30,0.9)',
+    shadowCard: '0 1px 0 rgba(255,255,255,0.06) inset, 0 10px 30px rgba(0,0,0,0.55)',
+    glassTint: 'rgba(64,64,70,0.55)',
   },
 }
 
@@ -71,20 +83,28 @@ export function applyTheme(themeName, accentName) {
     t = theme
   }
   const root = document.documentElement
+
   root.style.setProperty('--bg', t.bg)
+  root.style.setProperty('--bg-grouped', t.bgGrouped)
   root.style.setProperty('--card', t.card)
+  root.style.setProperty('--glass', t.glass)
+  root.style.setProperty('--glass-tint', t.glassTint)
   root.style.setProperty('--text', t.text)
   root.style.setProperty('--text2', t.text2)
   root.style.setProperty('--accent', accent)
-  root.style.setProperty('--border', t.border)
+  root.style.setProperty('--green', t.green)
+  root.style.setProperty('--red', t.red)
+  root.style.setProperty('--orange', t.orange)
+  root.style.setProperty('--separator', t.separator)
+  root.style.setProperty('--hairline', t.hairline)
   root.style.setProperty('--nav-bg', t.navBg)
   root.style.setProperty('--tab-bg', t.tabBg)
-  root.style.setProperty('--glass', t.glass)
-  root.style.setProperty('--shadow', t.shadow)
+  root.style.setProperty('--shadow-card', t.shadowCard)
   root.style.setProperty('--is-dark', dark ? '1' : '0')
   root.style.colorScheme = dark ? 'dark' : 'light'
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.setAttribute('content', dark ? t.bg : '#f2f2f7')
+  return dark
 }
 
 export function safeGet(key, fallback = null) {

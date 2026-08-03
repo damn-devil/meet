@@ -21,6 +21,7 @@ const initialState = {
   bootError: null,
   bg: '',
   brutal: safeGet('together_brutal') === '1',
+  isDark: false,
 }
 
 function reducer(state, action) {
@@ -52,6 +53,8 @@ function reducer(state, action) {
       return { ...state, requests: action.requests }
     case 'SET_BRUTAL':
       return { ...state, brutal: action.brutal }
+    case 'SET_DARK':
+      return { ...state, isDark: action.dark }
     case 'VIEW':
       return { ...state, view: action.view, selectedTask: action.view === 'task' ? action.id : state.selectedTask }
     case 'OPEN_TASK':
@@ -328,6 +331,7 @@ export function StoreProvider({ children }) {
       safeSet('together_brutal', on ? '1' : '0')
       dispatch({ type: 'SET_BRUTAL', brutal: !!on })
     },
+    setDark: (dark) => dispatch({ type: 'SET_DARK', dark: !!dark }),
   }
 
   return <StoreContext.Provider value={{ state, dispatch, actions }}>{children}</StoreContext.Provider>
@@ -338,8 +342,18 @@ export function useStore() {
 }
 
 export function useThemeInit() {
-  const { state } = useStore()
+  const { state, actions } = useStore()
   useEffect(() => {
-    applyTheme(savedTheme(), state.user?.accent || savedAccent())
+    const theme = savedTheme()
+    const apply = () => {
+      const dark = applyTheme(theme, state.user?.accent || savedAccent())
+      actions.setDark(dark)
+    }
+    apply()
+    if (theme === 'auto') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)')
+      mq.addEventListener?.('change', apply)
+      return () => mq.removeEventListener?.('change', apply)
+    }
   }, [state.user])
 }

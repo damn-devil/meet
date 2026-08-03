@@ -134,7 +134,7 @@ function AppInner() {
   }
 
   return (
-    <div className={`app${bg ? ' has-bg' : ''}${state.brutal ? ' brutal' : ''}`} style={bg ? { '--bg-img': `url("${bg}")` } : undefined}>
+    <div className={`app${bg ? ' has-bg' : ''}${state.brutal ? ' brutal' : ''}${state.isDark ? ' is-dark' : ''}`} style={bg ? { '--bg-img': `url("${bg}")` } : undefined}>
       {screen}
       <RequestsBanner />
       <TabBar />
