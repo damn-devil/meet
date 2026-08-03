@@ -1581,6 +1581,30 @@ select {
   transform: scale(1.25);
 }
 
+/* ---------- Баннер новой версии ---------- */
+.update-banner {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 16px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  animation: toastin 0.34s var(--spring);
+}
+.update-banner-text {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed;

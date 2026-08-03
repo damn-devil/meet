@@ -7,7 +7,7 @@ import { TaskDetailScreen } from './screens/TaskDetailScreen.jsx'
 import { Toast } from './components/Toast.jsx'
 import { Icon } from './components/Icon.jsx'
 import { Avatar } from './components/Avatar.jsx'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { notify } from './lib/notify.js'
 import './index.css'
 
@@ -152,7 +152,32 @@ function AppInner() {
       {screen}
       <RequestsBanner />
       <TabBar />
+      <UpdateBanner />
       <Toast />
+    </div>
+  )
+}
+
+function UpdateBanner() {
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const onUpdate = () => setShow(true)
+    window.addEventListener('together-update-available', onUpdate)
+    return () => window.removeEventListener('together-update-available', onUpdate)
+  }, [])
+
+  if (!show) return null
+
+  const apply = async () => {
+    const reg = await navigator.serviceWorker.getRegistration()
+    if (reg?.waiting) reg.waiting.postMessage('SKIP_WAITING')
+    window.location.reload()
+  }
+
+  return (
+    <div className="update-banner" role="status">
+      <span className="update-banner-text">📦 Доступна новая версия</span>
+      <button className="btn btn-primary btn-sm" onClick={apply}>Обновить</button>
     </div>
   )
 }

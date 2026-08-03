@@ -28,6 +28,21 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return
 
+  // навигация: сначала сеть, чтобы всегда получать свежий HTML
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      fetch(req)
+        .then((res) => {
+          const clone = res.clone()
+          caches.open(CACHE).then((c) => c.put(req, clone))
+          return res
+        })
+        .catch(() => caches.match(scopeUrl('.')))
+    )
+    return
+  }
+
+  // остальное: из кэша, в фоне обновляем
   e.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req)
@@ -38,7 +53,7 @@ self.addEventListener('fetch', (e) => {
           }
           return res
         })
-        .catch(() => cached || (req.mode === 'navigate' ? caches.match(scopeUrl('.')) : undefined))
+        .catch(() => cached)
       return cached || network
     })
   )
