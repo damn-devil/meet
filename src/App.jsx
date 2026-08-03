@@ -34,16 +34,16 @@ function useCompletionNotifications() {
 
       if (!isFirst && prev && prev !== t.status) {
         if (t.status === 'completed') {
-          actions.toast(`✅ Задача «${t.title}» выполнена!`, 'success')
+          actions.toast(`✅ Событие «${t.title}» выполнено!`, 'success')
         } else if (t.status === 'missed') {
-          actions.toast(`⏰ План «${t.title}» пропущен`, 'info')
+          actions.toast(`⏰ Событие «${t.title}» пропущено`, 'info')
         } else if (t.status === 'cancelled') {
-          actions.toast(`🗑 План «${t.title}» отменён`, 'info')
+          actions.toast(`🗑 Событие «${t.title}» отменено`, 'info')
         }
       }
 
       if (!isFirst && !prev && t.created_by !== meId) {
-        actions.toast(`📅 Новый план: «${t.title}»`, 'info')
+        actions.toast(`📅 Новое событие: «${t.title}»`, 'info')
       }
 
       t.ratings?.forEach((r) => {
@@ -65,11 +65,11 @@ function useCompletionNotifications() {
         if (!isFirst && a.requested_by !== meId) {
           const prevA = seenAgreements.current[`${t.id}:${a.id}`]
           if (a.status === 'pending' && !prevA) {
-            const what = a.type === 'delete' ? 'удалить план' : 'перенести план'
+            const what = a.type === 'delete' ? 'удалить событие' : 'перенести событие'
             actions.toast(`💬 ${a.requester_name} предлагает ${what}: «${t.title}»`, 'info')
           } else if (prevA === 'pending' && a.status === 'approved') {
-            const what = a.type === 'delete' ? 'удалён' : 'перенесён'
-            actions.toast(`✅ План «${t.title}» ${what}`, 'success')
+            const what = a.type === 'delete' ? 'удалено' : 'перенесено'
+            actions.toast(`✅ Событие «${t.title}» ${what}`, 'success')
           } else if (prevA === 'pending' && a.status === 'rejected') {
             actions.toast(`❌ Запрос по «${t.title}» отклонён`, 'info')
           }
@@ -198,7 +198,7 @@ function RequestsBanner() {
 function TabBar() {
   const { state, actions } = useStore()
   const tabs = [
-    { id: 'tasks', icon: 'calendar', label: 'Планы' },
+    { id: 'tasks', icon: 'calendar', label: 'События' },
     { id: 'calendar', icon: 'grid', label: 'Календарь' },
     { id: 'couple', icon: 'heart', label: 'Пара' },
     { id: 'profile', icon: 'person', label: 'Профиль' },

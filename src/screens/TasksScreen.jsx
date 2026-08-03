@@ -24,20 +24,20 @@ export function TasksScreen() {
   }), [state.tasks])
 
   const filters = [
-    { id: 'upcoming', label: 'Впереди', count: counts.upcoming },
-    { id: 'done', label: 'Готово', count: counts.done },
-    { id: 'missed', label: 'Прошло', count: counts.missed },
+    { id: 'upcoming', label: 'Предстоящие', count: counts.upcoming },
+    { id: 'done', label: 'Выполненные', count: counts.done },
+    { id: 'missed', label: 'Пропущенные', count: counts.missed },
   ]
 
   return (
     <div className="screen">
       <header className="screen-header">
         <div>
-          <h1>Планы</h1>
+          <h1>События</h1>
           <p className="screen-sub">{state.couple?.members?.map((m) => m.name).join(' и ')}</p>
         </div>
         {state.couple && (
-          <button className="btn btn-primary btn-round" onClick={() => setShowAdd(true)} aria-label="Добавить план">+</button>
+          <button className="btn btn-primary btn-round" onClick={() => setShowAdd(true)} aria-label="Добавить событие">+</button>
         )}
       </header>
       <div className="chip-row">

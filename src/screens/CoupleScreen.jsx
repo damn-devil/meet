@@ -122,7 +122,7 @@ export function CoupleScreen() {
             </button>
             {confirmBreak && (
               <div className="danger-confirm glass">
-                <p>Разорвать пару? Планы и общие данные будут удалены у обоих.</p>
+                <p>Разорвать пару? События и общие данные будут удалены у обоих.</p>
                 <div className="danger-actions">
                   <button className="btn btn-soft" onClick={() => setConfirmBreak(false)}>Отмена</button>
                   <button className="btn btn-danger" onClick={breakUp} disabled={breaking}>

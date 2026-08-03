@@ -21,7 +21,7 @@ const initialState = {
   loading: true,
   bootError: null,
   bg: '',
-  brutal: safeGet('together_brutal') === '1',
+  brutal: safeGet('together_brutal') !== '0',
   isDark: false,
 }
 

@@ -57,7 +57,7 @@ describe('App', () => {
   it('shows tasks list after boot', async () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
-    expect(screen.getByRole('heading', { name: 'Планы' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'События' })).toBeInTheDocument()
   })
 
   it('shows task detail on click', async () => {

@@ -22,7 +22,7 @@ export function TaskDetailScreen({ taskId }) {
     return (
       <div className="screen">
         <div className="empty-state">
-          <p>Задача не найдена</p>
+          <p>Событие не найдено</p>
           <button className="btn btn-primary" onClick={() => actions.setView('tasks')}>Назад</button>
         </div>
       </div>
@@ -80,9 +80,9 @@ export function TaskDetailScreen({ taskId }) {
   }
 
   const agreementText = (a) => {
-    if (a.type === 'delete') return `${a.requester_name} предлагает удалить план`
+    if (a.type === 'delete') return `${a.requester_name} предлагает удалить событие`
     if (a.type === 'reschedule') return `${a.requester_name} предлагает перенести на ${formatDateTime(a.proposed_value)}`
-    return `${a.requester_name} предлагает изменить план`
+    return `${a.requester_name} предлагает изменить событие`
   }
 
   const respondAgreement = async (agree) => {
@@ -142,7 +142,7 @@ export function TaskDetailScreen({ taskId }) {
             <button className="btn btn-primary btn-block" onClick={checkIn}>✅ Я на месте</button>
           )}
           {myCheckin && !partnerCheckin && canAct && (
-            <p className="presence-wait">Ожидаем {partner?.name}... Как только оба отметятся — план закроется сам.</p>
+            <p className="presence-wait">Ожидаем {partner?.name}... Как только оба отметятся — событие закроется само.</p>
           )}
         </div>
 
@@ -199,7 +199,7 @@ export function TaskDetailScreen({ taskId }) {
           <div className="reschedule-box glass">
             <label className="field">
               <span>Название</span>
-              <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Название плана" />
+              <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Название события" />
             </label>
             <label className="field">
               <span>Описание</span>

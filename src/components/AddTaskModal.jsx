@@ -13,7 +13,7 @@ export function AddTaskModal({ onClose }) {
 
   const submit = async () => {
     setError(null)
-    if (!title.trim()) return setError('Дайте плану название')
+    if (!title.trim()) return setError('Дайте событию название')
     const when = date && time ? new Date(`${date}T${time}`).getTime() : null
     if (when && isNaN(when)) return setError('Неверная дата')
     const link = mapUrl.trim()
@@ -29,7 +29,7 @@ export function AddTaskModal({ onClose }) {
         description: description.trim() + extraDesc,
         scheduled_at: when,
       })
-      actions.toast('План создан!', 'success')
+      actions.toast('Событие создано!', 'success')
       onClose()
     } catch (e) {
       setError(e.message)
@@ -43,13 +43,13 @@ export function AddTaskModal({ onClose }) {
       <div className="modal modal-bottom" onClick={(e) => e.stopPropagation()}>
         <div className="modal-handle" />
         <div className="modal-head">
-          <h2>Новый план</h2>
+          <h2>Новое событие</h2>
           <button className="icon-btn" onClick={onClose}>✕</button>
         </div>
 
         <div className="modal-body">
           <label className="field">
-            <span>Что делаем</span>
+            <span>Чем займёмся</span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например: ужин в кафе" autoFocus />
           </label>
           <label className="field">
@@ -68,13 +68,13 @@ export function AddTaskModal({ onClose }) {
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Дата" />
               <input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label="Время" />
             </div>
-            <small className="field-hint">Оставьте пустым — план без времени</small>
+            <small className="field-hint">Оставьте пустым — событие без времени</small>
           </div>
 
           {error && <div className="error-banner">{error}</div>}
 
           <button className="btn btn-primary btn-block" onClick={submit} disabled={busy}>
-            {busy ? 'Сохраняем...' : 'Сохранить план'}
+            {busy ? 'Сохраняем...' : 'Сохранить событие'}
           </button>
         </div>
       </div>
