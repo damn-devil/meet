@@ -272,6 +272,7 @@ function SettingsPanel() {
     safeSet('together_theme', theme)
     const dark = applyTheme(theme, savedAccent())
     actions.setDark(dark)
+    actions.flash()
   }
 
   const uploadBg = (e) => {

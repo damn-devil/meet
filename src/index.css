@@ -3205,21 +3205,42 @@ select {
 }
 
 /* ---------- Переходы как смена обоев у Google Pixel ----------
-   При смене темы цвета плавно перекрашиваются (transitions ниже);
-   при навигации контент мягко проявляется. */
+   Новый экран «расходится» из точки (внизу, где вкладки) во все стороны —
+   появление из неоткуда. Смена темы дополняется круглым перекрасом. */
 
 .screen-view {
-  animation: screen-in 0.42s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
+  animation: reveal-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes screen-in {
+@keyframes reveal-in {
   from {
-    opacity: 0;
-    transform: scale(0.985);
+    clip-path: circle(0% at var(--reveal-x, 50%) var(--reveal-y, 100%));
   }
   to {
-    opacity: 1;
-    transform: scale(1);
+    clip-path: circle(150% at var(--reveal-x, 50%) var(--reveal-y, 100%));
+  }
+}
+
+/* круглый перекрас нового цвета темы при её смене (из центра, гасится) */
+.repaint-ripple {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  will-change: clip-path, opacity;
+  animation: ripple-out 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes ripple-out {
+  0% {
+    clip-path: circle(0% at 50% 50%);
+    opacity: 0.92;
+  }
+  70% {
+    clip-path: circle(90% at 50% 50%);
+    opacity: 0.92;
+  }
+  100% {
+    clip-path: circle(150% at 50% 50%);
+    opacity: 0;
   }
 }
 

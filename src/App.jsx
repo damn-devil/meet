@@ -13,6 +13,24 @@ import { Emoji } from './components/Emoji.jsx'
 import { Loader } from './components/Loader.jsx'
 import './index.css'
 
+/* «Перекрас» как смена обоев у Google Pixel: круг расходится из центра
+   в новом цвете темы при её смене (не перемонтирует экран). */
+function RepaintRipple() {
+  const { state } = useStore()
+  const first = useRef(true)
+  const [play, setPlay] = useState(0)
+  const key = state.rippleKey
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    setPlay(key)
+  }, [key])
+  if (!play) return null
+  return <div key={play} className="repaint-ripple" style={{ background: 'var(--brutal-paper)' }} aria-hidden="true" />
+}
+
 function useCompletionNotifications() {
   const { state, actions } = useStore()
   const seen = useRef({})
@@ -169,6 +187,7 @@ function AppInner() {
       <TabBar />
       <UpdateBanner />
       <Toast />
+      <RepaintRipple />
     </div>
   )
 }

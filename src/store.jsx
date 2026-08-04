@@ -19,6 +19,7 @@ const initialState = {
   view: 'tasks',
   selectedTask: null,
   refreshKey: 0,
+  rippleKey: 0,
   toast: null,
   loading: true,
   bootError: null,
@@ -66,7 +67,7 @@ function reducer(state, action) {
     case 'OPEN_TASK':
       return { ...state, view: 'task', selectedTask: action.id, refreshKey: state.refreshKey + 1 }
     case 'FLASH':
-      return { ...state, refreshKey: state.refreshKey + 1 }
+      return { ...state, rippleKey: state.rippleKey + 1 }
     case 'TOAST':
       return { ...state, toast: action.toast }
     case 'LOGOUT':
