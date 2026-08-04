@@ -24,9 +24,9 @@ export async function sendPush(type, taskId, toUserId) {
     if (!res.ok) {
       const msg = body?.error || `Ошибка ${res.status}`
       if (import.meta.env.DEV) console.warn('send-push:', res.status, msg)
-      return { error: msg }
+      return { error: msg, url: client.supabaseUrl }
     }
-    return body || { ok: true }
+    return { ...(body || { ok: true }), url: client.supabaseUrl }
   } catch (e) {
     return { error: e?.message || 'Сеть недоступна' }
   }

@@ -273,6 +273,7 @@ function PushToggle() {
   const [status, setStatus] = useState({ supported: pushSupported(), permission: 'unsupported', subscribed: false, enabled: false })
   const [busy, setBusy] = useState(false)
   const [testBusy, setTestBusy] = useState(false)
+  const [debugInfo, setDebugInfo] = useState(null)
 
   const refresh = () => getPushStatus().then(setStatus).catch(() => {})
   useEffect(() => { refresh() }, [])
@@ -303,6 +304,7 @@ function PushToggle() {
     setTestBusy(true)
     const res = await sendPush('test', null, null).catch(() => ({ error: 'Сеть недоступна' }))
     setTestBusy(false)
+    setDebugInfo(res?.debug ? { appUrl: res.url, ...res.debug } : null)
     if (!res) actions.toast('Не удалось отправить тест', 'error')
     else if (res.error) actions.toast(res.error, 'error')
     else if (res.pushed > 0) actions.toast('Пуш отправлен! Проверьте уведомления', 'success')
@@ -331,6 +333,14 @@ function PushToggle() {
         <button className="btn btn-soft btn-block" disabled={testBusy} onClick={testPush}>
           {testBusy ? <span className="btn-busy"><Loader size={16} /> …</span> : 'Тест пуша'}
         </button>
+      )}
+      {debugInfo && (
+        <p className="bg-hint" style={{ fontSize: 11, wordBreak: 'break-all' }}>
+          Приложение: {(debugInfo.appUrl || '').replace('https://', '')}
+          <br />Функция: {(debugInfo.url || '').replace('https://', '')}
+          <br />user: {debugInfo.userId} · couple: {debugInfo.coupleId} · подписок: {debugInfo.subsCount}
+          {debugInfo.subsError ? <><br />subsErr: {debugInfo.subsError}</> : null}
+        </p>
       )}
     </div>
   )
