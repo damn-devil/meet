@@ -107,7 +107,7 @@ serve(async (req) => {
         .maybeSingle()
       const { data: mySubs, error: subsError } = await admin
         .from('push_subscriptions')
-        .select('endpoint')
+        .select('endpoint, keys')
         .eq('user_id', me.user.id)
       const debug = {
         url: supabaseUrl,

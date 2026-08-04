@@ -85,7 +85,7 @@ export async function enablePush() {
   }
 
   try {
-    await withTimeout(subscribeAndSave(reg), 20000, 'Пуш-сервис не ответил вовремя — попробуйте ещё раз')
+    await withTimeout(subscribeAndSave(reg), 30000, 'Пуш-сервис не ответил вовремя — попробуйте ещё раз')
   } catch (err) {
     const stale = await reg.pushManager.getSubscription().catch(() => null)
     if (stale) await stale.unsubscribe().catch(() => {})
