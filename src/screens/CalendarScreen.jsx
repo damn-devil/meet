@@ -143,7 +143,7 @@ export function CalendarScreen() {
         <div className="empty-state">
           <div className="empty-art"><Icon name="heart" /></div>
           <p>Календарь станет доступен, когда вы найдёте друг друга в паре</p>
-          <button className="btn btn-primary" onClick={() => actions.setView('couple')}>Найти пару</button>
+          <button className="btn btn-primary" onClick={() => actions.setView('profile')}>Найти пару</button>
         </div>
       )}
     </div>

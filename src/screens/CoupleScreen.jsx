@@ -4,7 +4,7 @@ import { Avatar } from '../components/Avatar.jsx'
 import { Icon } from '../components/Icon.jsx'
 import { telegramUrl, imessageUrl, hasAnyContact } from '../lib/contacts.js'
 
-export function CoupleScreen() {
+export function CoupleSection() {
   const { state, actions } = useStore()
   const me = state.user
   const partner = state.couple?.members?.find((m) => m.id !== me?.id)
@@ -76,12 +76,7 @@ export function CoupleScreen() {
   }
 
   return (
-    <div className="screen couple-screen">
-      <header className="screen-header">
-        <h1>Пара</h1>
-        <p className="screen-sub">Статус пары и приглашения</p>
-      </header>
-
+    <>
       {inCouple ? (
         <>
           <div className="couple-card glass">
@@ -203,6 +198,6 @@ export function CoupleScreen() {
           </div>
         </>
       )}
-    </div>
+    </>
   )
 }

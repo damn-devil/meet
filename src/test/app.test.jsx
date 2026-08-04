@@ -80,10 +80,10 @@ describe('App', () => {
     await waitFor(() => expect(screen.getAllByText('Аня').length).toBeGreaterThan(0))
   })
 
-  it('shows couple info on the couple tab', async () => {
+  it('shows couple info on the profile tab', async () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
-    await userEvent.click(screen.getByText('Пара'))
+    await userEvent.click(screen.getByText('Профиль'))
     await waitFor(() => expect(screen.getAllByText('Ваня').length).toBeGreaterThan(0))
   })
 
@@ -95,7 +95,7 @@ describe('App', () => {
     expect(screen.queryByText('Комментарии')).not.toBeInTheDocument()
     expect(screen.queryByText(/Не пришёл/)).not.toBeInTheDocument()
     await userEvent.click(screen.getByText('‹'))
-    await userEvent.click(screen.getByText('Пара'))
+    await userEvent.click(screen.getByText('Профиль'))
     await waitFor(() => expect(screen.getAllByText('Ваня').length).toBeGreaterThan(0))
     expect(screen.queryByText('Чат')).not.toBeInTheDocument()
   })

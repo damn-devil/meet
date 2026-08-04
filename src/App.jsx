@@ -2,7 +2,6 @@ import { StoreProvider, useStore, useThemeInit } from './store.jsx'
 import { AuthScreen } from './screens/AuthScreen.jsx'
 import { TasksScreen } from './screens/TasksScreen.jsx'
 import { ProfileScreen } from './screens/ProfileScreen.jsx'
-import { CoupleScreen } from './screens/CoupleScreen.jsx'
 import { CalendarScreen } from './screens/CalendarScreen.jsx'
 import { StatsScreen } from './screens/StatsScreen.jsx'
 import { TaskDetailScreen } from './screens/TaskDetailScreen.jsx'
@@ -126,7 +125,7 @@ function AppInner() {
   } else if (state.view === 'calendar') {
     screen = <CalendarScreen />
   } else if (state.view === 'couple') {
-    screen = <CoupleScreen />
+    screen = <ProfileScreen />
   } else if (state.view === 'stats') {
     screen = <StatsScreen />
   } else if (state.view === 'profile') {
@@ -209,7 +208,6 @@ function TabBar() {
   const tabs = [
     { id: 'tasks', icon: 'calendar', label: 'События' },
     { id: 'calendar', icon: 'grid', label: 'Календарь' },
-    { id: 'couple', icon: 'heart', label: 'Пара' },
     { id: 'stats', icon: 'chart', label: 'Статистика' },
     { id: 'profile', icon: 'person', label: 'Профиль' },
   ]

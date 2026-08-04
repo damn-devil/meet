@@ -4,6 +4,7 @@ import { THEMES } from '../lib/theme.js'
 import { applyTheme, safeSet, savedAccent, savedTheme } from '../lib/theme.js'
 import { Avatar } from '../components/Avatar.jsx'
 import { CropAvatar } from '../components/CropAvatar.jsx'
+import { CoupleSection } from './CoupleScreen.jsx'
 
 function dataUrlToBlob(dataUrl) {
   const [meta, b64] = dataUrl.split(',')
@@ -132,22 +133,9 @@ export function ProfileScreen() {
         )}
       </div>
 
-      {/* Stats */}
-      <h3 className="card-title">Статистика</h3>
-      <div className="stats-grid">
-        <div className="stat-card">
-          <span className="stat-num">{state.stats.completed}</span>
-          <span className="stat-label">Встреч</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-num">{state.stats.missed}</span>
-          <span className="stat-label">Пропущено</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-num">{state.stats.avgRating ? `★ ${state.stats.avgRating}` : '—'}</span>
-          <span className="stat-label">Оценка</span>
-        </div>
-      </div>
+      {/* Пара */}
+      <h3 className="card-title">Пара</h3>
+      <CoupleSection />
 
       {/* Settings */}
       <h3 className="card-title">Настройки</h3>
