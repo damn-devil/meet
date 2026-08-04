@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store.jsx'
+import { Emoji } from './Emoji.jsx'
 
 export function AddTaskModal({ onClose }) {
   const { actions } = useStore()
@@ -44,7 +45,7 @@ export function AddTaskModal({ onClose }) {
         <div className="modal-handle" />
         <div className="modal-head">
           <h2>Новое событие</h2>
-          <button className="icon-btn" onClick={onClose}>✕</button>
+          <button className="icon-btn" onClick={onClose}><Emoji name="close" size={18} /></button>
         </div>
 
         <div className="modal-body">

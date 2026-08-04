@@ -4,6 +4,7 @@ import { formatDateTime, relativeTime, statusMeta, avgRating } from '../lib/form
 import { hasMapUrl } from '../lib/map.js'
 import { AddTaskModal } from '../components/AddTaskModal.jsx'
 import { MoodMini } from '../components/MoodBar.jsx'
+import { Emoji } from '../components/Emoji.jsx'
 
 export function TasksScreen() {
   const { state, actions } = useStore()
@@ -53,7 +54,7 @@ export function TasksScreen() {
       <div className="task-list">
         {!state.couple && (
           <div className="empty-state">
-            <div className="empty-art">💛</div>
+            <div className="empty-art"><Emoji name="heart" size={44} /></div>
             <p>Вы пока не в паре</p>
             <span>Найдите партнёра по имени в разделе «Пара» и отправьте запрос</span>
             <button className="btn btn-primary" onClick={() => actions.setView('profile')}>Найти пару</button>
@@ -61,7 +62,7 @@ export function TasksScreen() {
         )}
         {state.couple && tasks.length === 0 && (
           <div className="empty-state">
-            <div className="empty-art">✨</div>
+            <div className="empty-art"><Emoji name="spark" size={44} /></div>
             <p>Пока пусто</p>
             <span>Добавьте первое место, куда сходите вместе</span>
           </div>
@@ -85,11 +86,11 @@ function TaskCard({ task, onClick }) {
   return (
     <div className={`task-card glass ${isLate ? 'late' : ''}`} onClick={onClick}>
       <div className="task-card-top">
-        <span className="task-icon">📝</span>
+        <span className="task-icon"><Emoji name="pencil" size={16} /></span>
         <div className="task-card-body">
           <h3>
             {task.title}
-            {hasMapUrl(task.description) && <span className="task-map-badge" title="Есть точка на карте">🗺</span>}
+            {hasMapUrl(task.description) && <span className="task-map-badge" title="Есть точка на карте"><Emoji name="map" size={13} /></span>}
           </h3>
           {task.scheduled_at && <p className="task-place">{formatDateTime(task.scheduled_at)}</p>}
         </div>
@@ -100,13 +101,13 @@ function TaskCard({ task, onClick }) {
       <div className="task-card-bottom">
         {task.scheduled_at && (
           <span className="task-time">
-            🕐 {formatDateTime(task.scheduled_at)}
+            <Emoji name="clock" size={14} /> {formatDateTime(task.scheduled_at)}
             <em>{relativeTime(task.scheduled_at)}</em>
           </span>
         )}
         <span className="task-meta">
-          {partnerCheckins > 0 && <span>📍 {partnerCheckins}/2</span>}
-          {rating && <span className="task-rating">★ {rating}</span>}
+          {partnerCheckins > 0 && <span><Emoji name="pin" size={13} /> {partnerCheckins}/2</span>}
+          {rating && <span className="task-rating"><Emoji name="star" size={13} /> {rating}</span>}
         </span>
       </div>
       {pendingAgreement && <CardAgreement task={task} agreement={pendingAgreement} onClick={onClick} />}

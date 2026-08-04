@@ -6,6 +6,7 @@ import { Avatar } from '../components/Avatar.jsx'
 import { CropAvatar } from '../components/CropAvatar.jsx'
 import { CoupleSection } from './CoupleScreen.jsx'
 import { MoodMini } from '../components/MoodBar.jsx'
+import { Emoji, avatarName } from '../components/Emoji.jsx'
 
 function dataUrlToBlob(dataUrl) {
   const [meta, b64] = dataUrl.split(',')
@@ -100,13 +101,13 @@ export function ProfileScreen() {
             <div className="avatar-photo-wrap">
               <Avatar url={avatarUrl} emoji={avatar} size="big" alt={name} />
               <label className="avatar-upload-btn">
-                {uploading ? 'Загрузка…' : '📷 Загрузить фото'}
+                {uploading ? 'Загрузка…' : <><Emoji name="camera" size={16} /> Загрузить фото</>}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={pickAvatar} />
               </label>
             </div>
             <div className="avatar-picker">
               {avatars.map((a) => (
-                <button key={a} className={`avatar-opt ${avatar === a && !avatarUrl ? 'active' : ''}`} onClick={() => setAvatar(a)}>{a}</button>
+                <button key={a} className={`avatar-opt ${avatar === a && !avatarUrl ? 'active' : ''}`} onClick={() => setAvatar(a)}><Emoji name={avatarName(a)} size={22} /></button>
               ))}
             </div>
             <label className="field">
@@ -131,7 +132,7 @@ export function ProfileScreen() {
             </div>
           </div>
         ) : (
-          <button className="btn btn-soft" onClick={() => setEditing(true)}>✏️ Редактировать</button>
+          <button className="btn btn-soft" onClick={() => setEditing(true)}><Emoji name="pencil" size={16} /> Редактировать</button>
         )}
       </div>
 
@@ -143,7 +144,7 @@ export function ProfileScreen() {
       <h3 className="card-title">Настройки</h3>
       <div className="settings-panel">
         <button className="btn btn-soft btn-block" onClick={() => setShowSettings(true)}>
-          ⚙️ Основные настройки
+          <Emoji name="gear" size={16} /> Основные настройки
         </button>
         <button className="btn btn-danger-soft btn-block" onClick={async () => { await actions.logout(); location.reload() }}>
           Выйти
@@ -174,7 +175,7 @@ export function ProfileScreen() {
             <div className="modal-handle" />
             <div className="modal-head">
               <h2>Основные настройки</h2>
-              <button className="icon-btn" onClick={() => setShowSettings(false)}>✕</button>
+              <button className="icon-btn" onClick={() => setShowSettings(false)}><Emoji name="close" size={18} /></button>
             </div>
             <div className="modal-body">
               <SettingsPanel />
@@ -248,7 +249,7 @@ function SettingsPanel() {
         <p className="bg-hint">Своё фото в качестве фона приложения — его увидит и ваш партнёр.</p>
         <div className="bg-actions">
           <label className="btn btn-soft">
-            {state.bg ? '📷 Сменить фото' : '📷 Загрузить фото'}
+            {state.bg ? <><Emoji name="camera" size={16} /> Сменить фото</> : <><Emoji name="camera" size={16} /> Загрузить фото</>}
             <input type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadBg} />
           </label>
           {state.bg && (

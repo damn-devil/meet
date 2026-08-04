@@ -3,6 +3,7 @@ import { useStore } from '../store.jsx'
 import { Avatar } from '../components/Avatar.jsx'
 import { Icon } from '../components/Icon.jsx'
 import { telegramUrl, imessageUrl, hasAnyContact } from '../lib/contacts.js'
+import { Emoji } from '../components/Emoji.jsx'
 
 export function CoupleSection() {
   const { state, actions } = useStore()
@@ -86,7 +87,7 @@ export function CoupleSection() {
                 <Avatar url={me?.avatar_url} emoji={me?.avatar} size="couple" alt={me?.name} />
                 <span className="couple-name">{me?.name} <em>вы</em></span>
               </div>
-              <div className="couple-heart">❤</div>
+              <div className="couple-heart"><Emoji name="heart" size={26} /></div>
               <div className="couple-member">
                 <Avatar url={partner?.avatar_url} emoji={partner?.avatar || '❓'} size="couple" alt={partner?.name} />
                 <span className="couple-name">{partner?.name || '—'}</span>
@@ -160,7 +161,7 @@ export function CoupleSection() {
                   autoCorrect="off"
                 />
                 <button className="btn btn-soft" onClick={searchUsers} disabled={searching}>
-                  {searching ? '…' : '🔍'}
+                  {searching ? '…' : <Emoji name="search" size={16} />}
                 </button>
               </div>
               {searchResults.length > 0 && (

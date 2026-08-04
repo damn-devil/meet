@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Emoji } from './Emoji.jsx'
 
 const BOX = 280
 const OUT = 512
@@ -74,7 +75,7 @@ export function CropAvatar({ src, onCancel, onSave }) {
       <div className="crop-modal glass" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>Обрежьте фото</h2>
-          <button className="icon-btn" onClick={onCancel}>✕</button>
+          <button className="icon-btn" onClick={onCancel}><Emoji name="close" size={18} /></button>
         </div>
 
         {base ? (

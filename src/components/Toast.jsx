@@ -1,4 +1,5 @@
 import { useStore } from '../store.jsx'
+import { EmojiText } from './Emoji.jsx'
 
 export function Toast() {
   const { state } = useStore()
@@ -6,7 +7,7 @@ export function Toast() {
   if (!t) return null
   return (
     <div className={`toast ${t.type}`}>
-      {t.msg}
+      <EmojiText text={t.msg} />
     </div>
   )
 }

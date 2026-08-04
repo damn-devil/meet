@@ -32,11 +32,11 @@ export function relativeTime(ts) {
 
 export function statusMeta(status) {
   const map = {
-    planned: { label: 'Запланировано', color: '#f59e0b', icon: '⏳' },
-    in_progress: { label: 'Встреча идёт', color: '#38bdf8', icon: '📍' },
-    completed: { label: 'Выполнено', color: '#10b981', icon: '✅' },
-    missed: { label: 'Пропущено', color: '#f43f5e', icon: '😿' },
-    cancelled: { label: 'Отменено', color: '#9ca3af', icon: '🚫' },
+    planned: { label: 'Запланировано', color: '#f59e0b', icon: 'hourglass' },
+    in_progress: { label: 'Встреча идёт', color: '#38bdf8', icon: 'pin' },
+    completed: { label: 'Выполнено', color: '#10b981', icon: 'check' },
+    missed: { label: 'Пропущено', color: '#f43f5e', icon: 'cat-sad' },
+    cancelled: { label: 'Отменено', color: '#9ca3af', icon: 'prohibited' },
   }
   return map[status] || map.planned
 }

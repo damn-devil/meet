@@ -4,6 +4,7 @@ import { formatDateTime, statusMeta, avgRating, relativeTime } from '../lib/form
 import { extractMapUrl } from '../lib/map.js'
 import { Avatar } from '../components/Avatar.jsx'
 import { MoodMini } from '../components/MoodBar.jsx'
+import { Emoji } from '../components/Emoji.jsx'
 
 export function TaskDetailScreen({ taskId }) {
   const { state, actions } = useStore()
@@ -101,7 +102,7 @@ export function TaskDetailScreen({ taskId }) {
     <div className="screen detail-screen">
       <header className="detail-header">
         <button className="back-btn" onClick={() => actions.setView('tasks')}>‹</button>
-        <span className="status-pill" style={{ background: `${meta.color}1a`, color: meta.color }}>{meta.icon} {meta.label}</span>
+        <span className="status-pill" style={{ background: `${meta.color}1a`, color: meta.color }}><Emoji name={meta.icon} size={15} /> {meta.label}</span>
         <div className="detail-header-spacer" />
         <MoodMini />
       </header>
@@ -116,7 +117,7 @@ export function TaskDetailScreen({ taskId }) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            🗺 Показать на карте
+            <Emoji name="map" size={16} /> Показать на карте
           </a>
         )}
 
@@ -128,7 +129,7 @@ export function TaskDetailScreen({ taskId }) {
           </div>
           <div className="info-cell glass">
             <span className="info-label">Оценка</span>
-            <strong>{rating ? `★ ${rating}` : '—'}</strong>
+            <strong>{rating ? <><Emoji name="star" size={14} /> {rating}</> : '—'}</strong>
             <span className="info-sub">{task.ratings.length}/2 оценили</span>
           </div>
         </div>
@@ -141,7 +142,7 @@ export function TaskDetailScreen({ taskId }) {
             <PresenceItem name={partner?.name} avatar={partner?.avatar} avatarUrl={partner?.avatar_url} arrived={!!partnerCheckin} />
           </div>
           {canAct && !myCheckin && (
-            <button className="btn btn-primary btn-block" onClick={checkIn}>✅ Я на месте</button>
+            <button className="btn btn-primary btn-block" onClick={checkIn}><Emoji name="check" size={16} /> Я на месте</button>
           )}
           {myCheckin && !partnerCheckin && canAct && (
             <p className="presence-wait">Ожидаем {partner?.name}... Как только оба отметятся — событие закроется само.</p>
@@ -158,7 +159,7 @@ export function TaskDetailScreen({ taskId }) {
 
         {task.status === 'completed' && task.ratings.length < 2 && (
           <button className="btn btn-soft btn-block" onClick={() => setRatingModal(true)}>
-            {task.ratings.some((r) => r.user_id === me?.id) ? '⭐ Изменить оценку' : '⭐ Оценить встречу'}
+            {task.ratings.some((r) => r.user_id === me?.id) ? <><Emoji name="star" size={16} /> Изменить оценку</> : <><Emoji name="star" size={16} /> Оценить встречу</>}
           </button>
         )}
 
@@ -183,9 +184,9 @@ export function TaskDetailScreen({ taskId }) {
         {/* Actions */}
         {canAct && !pendingAgreement && (
           <div className="detail-actions">
-            <button className="btn btn-soft" onClick={() => setShowReschedule((v) => !v)}>🕐 Перенести</button>
-            <button className="btn btn-soft" onClick={startEdit}>✏️ Изменить</button>
-            <button className="btn btn-danger-soft" onClick={() => requestAgreement('delete')}>🗑 Удалить</button>
+            <button className="btn btn-soft" onClick={() => setShowReschedule((v) => !v)}><Emoji name="clock" size={16} /> Перенести</button>
+            <button className="btn btn-soft" onClick={startEdit}><Emoji name="pencil" size={16} /> Изменить</button>
+            <button className="btn btn-danger-soft" onClick={() => requestAgreement('delete')}><Emoji name="trash" size={16} /> Удалить</button>
           </div>
         )}
         {canAct && showReschedule && (
@@ -236,7 +237,7 @@ function PresenceItem({ name, avatar, avatarUrl, arrived, self }) {
       <Avatar url={avatarUrl} emoji={avatar} size="presence" alt={name} />
       <div className="presence-info">
         <span>{name}</span>
-        <small>{arrived ? '✅ На месте' : self ? 'Вы ещё не пришли' : 'Ещё не пришёл'}</small>
+        <small>{arrived ? <><Emoji name="check" size={12} /> На месте</> : self ? 'Вы ещё не пришли' : 'Ещё не пришёл'}</small>
       </div>
     </div>
   )
@@ -267,12 +268,12 @@ function RatingModal({ task, onClose }) {
         <div className="modal-handle" />
         <div className="modal-head">
           <h2>Как прошла встреча?</h2>
-          <button className="icon-btn" onClick={onClose}>✕</button>
+          <button className="icon-btn" onClick={onClose}><Emoji name="close" size={18} /></button>
         </div>
         <div className="modal-body">
           <div className="stars">
             {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} className={`star ${n <= score ? 'active' : ''}`} onClick={() => setScore(n)}>★</button>
+              <button key={n} className={`star ${n <= score ? 'active' : ''}`} onClick={() => setScore(n)}><Emoji name="star" size={20} /></button>
             ))}
           </div>
           <label className="field">

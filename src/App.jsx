@@ -9,6 +9,7 @@ import { Toast } from './components/Toast.jsx'
 import { Icon } from './components/Icon.jsx'
 import { Avatar } from './components/Avatar.jsx'
 import { useEffect, useRef, useState } from 'react'
+import { Emoji } from './components/Emoji.jsx'
 import './index.css'
 
 function useCompletionNotifications() {
@@ -94,7 +95,7 @@ function AppInner() {
   if (state.loading) {
     return (
       <div className="boot-screen">
-        <div className="boot-paw">🐾</div>
+        <div className="boot-paw"><Emoji name="paw" size={46} /></div>
         <div className="boot-spinner" />
       </div>
     )
@@ -177,7 +178,7 @@ function UpdateBanner() {
 
   return (
     <div className="update-banner" role="status">
-      <span className="update-banner-text">📦 Доступна новая версия</span>
+      <span className="update-banner-text"><Emoji name="box" size={18} /> Доступна новая версия</span>
       <button className="btn btn-primary btn-sm" onClick={apply}>Обновить</button>
     </div>
   )

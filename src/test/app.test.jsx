@@ -105,7 +105,7 @@ describe('App', () => {
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getByText('Профиль'))
     await waitFor(() => expect(screen.getAllByText('Аня').length).toBeGreaterThan(0))
-    await userEvent.click(screen.getByText('⚙️ Основные настройки'))
+    await userEvent.click(screen.getByText('Основные настройки'))
     await waitFor(() => expect(screen.getByText('Тема')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Авто' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Светлая' })).toBeInTheDocument()
