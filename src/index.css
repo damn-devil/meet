@@ -2854,3 +2854,60 @@ select {
   min-width: 24px;
   text-align: right;
 }
+
+/* ----- индикатор настроения: коробка сверху, не перекрывает контент ----- */
+.app.brutal .mood-bar {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 16px 2px;
+  padding: 10px 14px;
+  background: var(--brutal-card);
+  border: 3px solid var(--brutal-ink);
+  border-radius: var(--radius-card);
+  box-shadow: 5px 5px 0 var(--brutal-ink);
+}
+.app.brutal .mood-face {
+  flex: 0 0 auto;
+  color: var(--brutal-ink);
+  line-height: 0;
+}
+.app.brutal .mood-info {
+  flex: 1;
+  min-width: 0;
+}
+.app.brutal .mood-name {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 900;
+  font-size: 15px;
+  color: var(--brutal-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.app.brutal .mood-scale {
+  display: flex;
+  gap: 5px;
+  margin-top: 8px;
+  height: 10px;
+}
+.app.brutal .mood-seg {
+  flex: 1;
+  background: var(--brutal-paper);
+  border: 2px solid var(--brutal-ink);
+  border-radius: 2px;
+}
+.app.brutal .mood-seg.on {
+  background: var(--accent);
+  border-color: var(--brutal-ink);
+}
+.app.brutal .mood-pct {
+  margin-top: 6px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: var(--brutal-muted);
+}
+.app.brutal.is-dark .mood-face {
+  color: var(--brutal-ink);
+}

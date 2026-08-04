@@ -4,6 +4,7 @@ import { TasksScreen } from './screens/TasksScreen.jsx'
 import { ProfileScreen } from './screens/ProfileScreen.jsx'
 import { CalendarScreen } from './screens/CalendarScreen.jsx'
 import { StatsScreen } from './screens/StatsScreen.jsx'
+import { MoodBar } from './components/MoodBar.jsx'
 import { TaskDetailScreen } from './screens/TaskDetailScreen.jsx'
 import { Toast } from './components/Toast.jsx'
 import { Icon } from './components/Icon.jsx'
@@ -150,6 +151,7 @@ function AppInner() {
           </filter>
         </defs>
       </svg>
+      <MoodBar />
       {screen}
       <RequestsBanner />
       <TabBar />
