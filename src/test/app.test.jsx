@@ -8,6 +8,8 @@ vi.mock('../api.js', () => ({
   getToken: () => Promise.resolve('test-token'),
   setToken: vi.fn(),
   clearToken: vi.fn(),
+  isRecoverySession: () => false,
+  clearRecoverySession: vi.fn(),
   subscribeTasks: () => ({ subscribe: vi.fn() }),
   unsubscribeTasks: vi.fn(),
   subscribeRequests: () => ({ subscribe: vi.fn() }),

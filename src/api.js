@@ -12,6 +12,24 @@ export async function hasSession() {
   return !!data.session
 }
 
+// Ссылка из письма «восстановление пароля» открывает приложение с сессией
+// типа PASSWORD_RECOVERY. Ловим этот момент, чтобы показать форму нового пароля,
+// а не пускать в приложение как обычно.
+let recoveryFlag = false
+if (supabase) {
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') recoveryFlag = true
+  })
+}
+
+export function isRecoverySession() {
+  return recoveryFlag
+}
+
+export function clearRecoverySession() {
+  recoveryFlag = false
+}
+
 export function setToken() {}
 
 export async function clearToken() {
@@ -62,14 +80,16 @@ export const api = {
   logout: async () => {
     await clearToken()
   },
-  signInWithProvider: async (provider) => {
+  resetPassword: async (email) => {
     const client = supabaseReady()
     const redirectTo = `${window.location.origin}${window.location.pathname}`
-    const { error } = await client.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo },
-    })
-    if (error) throw new Error(error.message || 'Не удалось войти')
+    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo })
+    if (error) throw new Error(error.message || 'Не удалось отправить ссылку')
+  },
+  updatePassword: async (password) => {
+    const client = supabaseReady()
+    const { error } = await client.auth.updateUser({ password })
+    if (error) throw new Error(error.message || 'Не удалось сменить пароль')
   },
   me: async () => {
     let data = await rpc('get_me')

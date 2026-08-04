@@ -465,31 +465,31 @@ select {
   gap: 14px;
   text-align: left;
 }
-.auth-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 16px 0 12px;
+.auth-hint {
   color: var(--text2);
   font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
 }
-.auth-divider::before,
-.auth-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--hairline);
+.auth-link {
+  margin-top: 16px;
+  width: 100%;
+  text-align: center;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
-.auth-social {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.auth-social .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+.success-banner {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--green) 40%, transparent);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
 }
 .auth-footer {
   color: var(--text2);

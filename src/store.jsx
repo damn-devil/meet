@@ -3,6 +3,7 @@ import {
   api, subscribeTasks, unsubscribeTasks, subscribeRequests, unsubscribeRequests,
   subscribeFreeDays, unsubscribeFreeDays,
   hasSession, clearToken,
+  isRecoverySession, clearRecoverySession,
 } from './api.js'
 import { applyTheme, savedTheme, savedAccent, safeSet, safeGet } from './lib/theme.js'
 
@@ -23,6 +24,7 @@ const initialState = {
   bg: '',
   brutal: true,
   isDark: false,
+  recovery: false,
 }
 
 function reducer(state, action) {
@@ -56,6 +58,8 @@ function reducer(state, action) {
       return { ...state, freeDays: action.days }
     case 'SET_DARK':
       return { ...state, isDark: action.dark }
+    case 'SET_RECOVERY':
+      return { ...state, recovery: action.recovery }
     case 'VIEW':
       return { ...state, view: action.view, selectedTask: action.view === 'task' ? action.id : state.selectedTask }
     case 'OPEN_TASK':
@@ -166,6 +170,13 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     let cancelled = false
     const boot = async () => {
+      if (isRecoverySession()) {
+        // Открыли приложение по ссылке восстановления пароля — не пускаем
+        // в приложение, показываем форму смены пароля.
+        dispatch({ type: 'SET_RECOVERY', recovery: true })
+        dispatch({ type: 'BOOT', user: null, couple: null })
+        return
+      }
       if (!(await hasSession())) {
         if (cancelled) return
         dispatch({ type: 'BOOT', user: null, couple: null })
@@ -208,8 +219,19 @@ export function StoreProvider({ children }) {
       connectRequests()
       return data
     },
-    signInWithProvider: async (provider) => {
-      await api.signInWithProvider(provider)
+    resetPassword: async (email) => {
+      await api.resetPassword(email)
+    },
+    updatePassword: async (password) => {
+      await api.updatePassword(password)
+    },
+    clearRecovery: async () => {
+      clearRecoverySession()
+      dispatch({ type: 'SET_RECOVERY', recovery: false })
+      dispatch({ type: 'BOOT', user: null, couple: null })
+      try {
+        await api.logout()
+      } catch {}
     },
     register: async (name, email, password) => {
       const data = await api.register({ name, email, password })
