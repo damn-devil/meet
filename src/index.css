@@ -47,6 +47,7 @@ body {
   overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 button {
@@ -115,17 +116,38 @@ select {
   -webkit-mask-image: radial-gradient(720px 560px at 50% 38%, #000 30%, transparent 75%);
 }
 
-/* Свой фон из фотографии: фото + лёгкий тон темы для читаемости */
+/* Свой фон из фотографии: фото рисует .bg-crossfade (плавно проявляется),
+   а сетка за ним приглушается */
 .app.has-bg::before {
+  opacity: 0.45;
+  transition: opacity 0.4s var(--ease);
+}
+.app.has-bg::after {
+  opacity: 0.12;
+}
+
+/* Плавная смена фоновой фотографии: при смене --bg-img элемент пересоздаётся
+   (key={bg}) и проявляется поверх старого фото */
+.bg-crossfade {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   background-image:
     linear-gradient(color-mix(in srgb, var(--bg) 10%, transparent), color-mix(in srgb, var(--bg) 10%, transparent)),
     var(--bg-img, none);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  animation: bgfade 0.5s var(--ease);
 }
-.app.has-bg::after {
-  opacity: 0.12;
+@keyframes bgfade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* контент — над фоновыми слоями */
@@ -214,7 +236,13 @@ select {
 /* ---------- Screen scaffold ---------- */
 .screen {
   padding: 20px 16px calc(88px + var(--safe-bottom));
-  animation: slidein 0.28s var(--ease);
+  animation: screen-in 0.32s var(--ease);
+}
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--dir, 1) * 34px)) scale(0.985);
+  }
 }
 @keyframes slidein {
   from {
@@ -753,6 +781,13 @@ select {
 /* ---------- Detail ---------- */
 .detail-screen {
   padding: 0 0 20px;
+  animation: detail-in 0.32s var(--ease);
+}
+@keyframes detail-in {
+  from {
+    opacity: 0;
+    transform: translateX(34px);
+  }
 }
 .detail-header {
   display: flex;
@@ -3032,4 +3067,16 @@ select {
 }
 .app.brutal.is-dark .mood-mini-face {
   color: var(--brutal-ink);
+}
+
+/* ---------- Доступность: уважаем системную настройку движения ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

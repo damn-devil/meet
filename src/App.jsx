@@ -87,11 +87,21 @@ function useCompletionNotifications() {
   }, [state.tasks, actions, meId, partnerName])
 }
 
+const TAB_IDX = { tasks: 0, calendar: 1, stats: 2, profile: 3 }
+
 function AppInner() {
   const { state } = useStore()
   useThemeInit()
   useCompletionNotifications()
   const bg = state.bg
+
+  const dirRef = useRef(0)
+  let dir = 1
+  const idx = TAB_IDX[state.view]
+  if (idx !== undefined) {
+    dir = idx >= dirRef.current ? 1 : -1
+    dirRef.current = idx
+  }
 
   if (state.loading) {
     return (
@@ -136,7 +146,8 @@ function AppInner() {
   }
 
   return (
-    <div className={`app${bg ? ' has-bg' : ''} brutal${state.isDark ? ' is-dark' : ''}`} style={bg ? { '--bg-img': `url("${bg}")` } : undefined}>
+    <div className={`app${bg ? ' has-bg' : ''} brutal${state.isDark ? ' is-dark' : ''}`} style={{ '--dir': dir }}>
+      {bg && <div key={bg} className="bg-crossfade" style={{ '--bg-img': `url("${bg}")` }} />}
       <svg className="sr-only" width="0" height="0" aria-hidden="true" focusable="false">
         <defs>
           <filter id="toggle-goo">
