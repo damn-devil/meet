@@ -62,6 +62,19 @@ export function StatsScreen() {
     const last30Done = last30.filter(isCompleted).length
     const last30Missed = last30.filter((t) => t.status === 'missed').length
 
+    const deleted = tasks.filter((t) => t.status === 'cancelled').length
+
+    const monthAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30)
+    const stale = tasks.filter((t) => {
+      if (t.status === 'completed' || t.status === 'cancelled') return false
+      if (!t.scheduled_at) return false
+      const d = new Date(t.scheduled_at)
+      if (Number.isNaN(d.getTime())) return false
+      return d < monthAgo
+    }).length
+
+    const edited = tasks.reduce((a, t) => a + (t.edit_count || 0), 0)
+
     const dow = [0, 0, 0, 0, 0, 0, 0]
     completed.forEach((t) => {
       if (t.scheduled_at) {
@@ -106,6 +119,7 @@ export function StatsScreen() {
     return {
       total, streak, avg,
       last30Done, last30Missed,
+      deleted, stale, edited,
       dow, maxDow,
       bestMonthKey, bestMonthCount,
       authoredByMe, authoredByPartner,
@@ -167,6 +181,15 @@ export function StatsScreen() {
         <div className="mini-metrics">
           <div className="mini-metric"><span className="mini-num ok">{s.last30Done}</span><span className="mini-label">состоялось</span></div>
           <div className="mini-metric"><span className="mini-num no">{s.last30Missed}</span><span className="mini-label">пропущено</span></div>
+        </div>
+      </div>
+
+      <div className="section-card">
+        <h2 className="section-title">Жизненный цикл событий</h2>
+        <div className="mini-metrics three">
+          <div className="mini-metric"><span className="mini-num">{s.deleted}</span><span className="mini-label">удалено</span></div>
+          <div className="mini-metric"><span className="mini-num no">{s.stale}</span><span className="mini-label">не выполн. более мес.</span></div>
+          <div className="mini-metric"><span className="mini-num">{s.edited}</span><span className="mini-label">изменено</span></div>
         </div>
       </div>
 

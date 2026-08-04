@@ -8,6 +8,7 @@ import { CoupleSection } from './CoupleScreen.jsx'
 import { MoodMini } from '../components/MoodBar.jsx'
 import { Emoji, avatarName } from '../components/Emoji.jsx'
 import { Loader } from '../components/Loader.jsx'
+import { HelpModal, AboutModal, PrivacyModal } from './SettingsInfo.jsx'
 
 function dataUrlToBlob(dataUrl) {
   const [meta, b64] = dataUrl.split(',')
@@ -286,6 +287,7 @@ function SettingsPanel() {
   }
 
   const [showAdmin, setShowAdmin] = useState(false)
+  const [showInfo, setShowInfo] = useState(null)
 
   return (
     <div className="settings-panel">
@@ -321,6 +323,15 @@ function SettingsPanel() {
 
       <div className="setting-group">
         <span className="setting-label">Сервис</span>
+        <button className="btn btn-soft btn-block" onClick={() => setShowInfo('help')}>
+          <Emoji name="question" size={16} /> Помощь
+        </button>
+        <button className="btn btn-soft btn-block" onClick={() => setShowInfo('about')}>
+          <Emoji name="heart" size={16} /> О приложении
+        </button>
+        <button className="btn btn-soft btn-block" onClick={() => setShowInfo('privacy')}>
+          <Emoji name="pin" size={16} /> Политика конфиденциальности
+        </button>
         {state.user?.is_admin && (
           <button className="btn btn-soft btn-block" onClick={() => setShowAdmin(true)}>
             <Emoji name="gear" size={16} /> Админ-панель
@@ -329,6 +340,9 @@ function SettingsPanel() {
       </div>
 
       {showAdmin && <AdminModal onClose={() => setShowAdmin(false)} />}
+      {showInfo === 'help' && <HelpModal onClose={() => setShowInfo(null)} />}
+      {showInfo === 'about' && <AboutModal onClose={() => setShowInfo(null)} />}
+      {showInfo === 'privacy' && <PrivacyModal onClose={() => setShowInfo(null)} />}
     </div>
   )
 }

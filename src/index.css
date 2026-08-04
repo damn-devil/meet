@@ -1251,6 +1251,50 @@ select {
   text-align: right;
   font-weight: 600;
 }
+.info-body {
+  max-height: 62vh;
+  overflow-y: auto;
+}
+.info-h {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 16px 0 6px;
+}
+.info-p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text2);
+  margin: 0 0 8px;
+}
+.info-p b {
+  color: var(--text);
+}
+.info-hint {
+  font-size: 13px;
+  color: var(--text2);
+  margin: 0 0 4px;
+}
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  border-bottom: 1px dashed var(--hairline);
+  padding-bottom: 6px;
+}
+.info-row span {
+  color: var(--text2);
+}
+.app.brutal .info-body h3 {
+  font-family: 'Courier New', Courier, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
 .search-username {
   color: var(--text2);
   font-style: normal;
@@ -2909,6 +2953,9 @@ select {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+.app.brutal .mini-metrics.three {
+  grid-template-columns: repeat(3, 1fr);
 }
 .app.brutal .mini-metric {
   background: var(--brutal-paper);

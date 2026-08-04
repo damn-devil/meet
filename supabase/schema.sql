@@ -85,6 +85,7 @@ create table if not exists public.tasks (
   created_by uuid not null references public.profiles(id),
   created_at timestamptz not null default now(),
   completed_at timestamptz,
+  edit_count int not null default 0,
   updated_at timestamptz not null default now()
 );
 
@@ -262,6 +263,7 @@ as $$
     'created_at', t.created_at,
     'completed_at', t.completed_at,
     'updated_at', t.updated_at,
+    'edit_count', t.edit_count,
     'checkins', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', k.id, 'task_id', k.task_id, 'user_id', k.user_id, 'arrived_at', k.arrived_at
@@ -488,6 +490,13 @@ as $$
     'completed', count(*) filter (where t.status = 'completed'),
     'missed', count(*) filter (where t.status = 'missed'),
     'cancelled', count(*) filter (where t.status = 'cancelled'),
+    'deleted', count(*) filter (where t.status = 'cancelled'),
+    'stale', count(*) filter (
+      where t.status in ('planned','in_progress','missed')
+        and t.scheduled_at is not null
+        and t.scheduled_at < now() - interval '1 month'
+    ),
+    'edited', coalesce(sum(t.edit_count), 0),
     'avgRating', (
       select round(avg(r.score)::numeric, 1)
       from public.ratings r
@@ -654,7 +663,8 @@ begin
       update public.tasks set status = 'cancelled', updated_at = now() where id = v_task.id;
     elsif v_agreement.type = 'reschedule' then
       update public.tasks
-      set scheduled_at = v_agreement.proposed_value::timestamptz, status = 'planned', updated_at = now()
+      set scheduled_at = v_agreement.proposed_value::timestamptz, status = 'planned',
+          edit_count = edit_count + 1, updated_at = now()
       where id = v_task.id;
     elsif v_agreement.type = 'edit' then
       update public.tasks
@@ -665,6 +675,7 @@ begin
           when v_agreement.proposed_value is not null then v_agreement.proposed_value::timestamptz
           else v_task.scheduled_at
         end,
+        edit_count = edit_count + 1,
         updated_at = now()
       where id = v_task.id;
     end if;
