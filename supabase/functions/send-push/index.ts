@@ -40,6 +40,37 @@ function json(data, status) {
   })
 }
 
+// Отправка одним подпискам. Удаляем подписку только если она реально протухла
+// (404/410 — endpoint больше не существует), а не при любой ошибке: например,
+// при несовпадении VAPID-ключей пуш-сервис отвечает 401, и подписка жива.
+// Ошибки возвращаем наружу — по ним видно, что именно сломалось.
+async function sendToSubs(subs, payload, options) {
+  let pushed = 0
+  const errors = []
+  await Promise.all(
+    (subs || []).map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: sub.keys || {} },
+          payload,
+          options
+        )
+        pushed++
+      } catch (e) {
+        const code = e?.statusCode || 0
+        if (code === 404 || code === 410) {
+          try {
+            await admin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+          } catch {}
+        } else {
+          errors.push(String(e?.message || e).slice(0, 400))
+        }
+      }
+    })
+  )
+  return { pushed, errors }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ error: 'Метод не поддерживается' }, 405)
@@ -67,24 +98,13 @@ serve(async (req) => {
         .from('push_subscriptions')
         .select('endpoint, keys')
         .eq('user_id', me.user.id)
-      let pushed = 0
-      await Promise.all(
-        (mySubs || []).map(async (sub) => {
-          try {
-            await webpush.sendNotification(
-              { endpoint: sub.endpoint, keys: sub.keys || {} },
-              JSON.stringify({ title: 'Universe of Plans', body: 'Тест: пуш работает!', url: '.' }),
-              { TTL: 300, urgency: 'high' }
-            )
-            pushed++
-          } catch {
-            try {
-              await admin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
-            } catch {}
-          }
-        })
+      if (!mySubs?.length) return json({ ok: true, pushed: 0, errors: ['Нет подписок в БД'] })
+      const { pushed, errors } = await sendToSubs(
+        mySubs,
+        JSON.stringify({ title: 'Universe of Plans', body: 'Тест: пуш работает!', url: '.' }),
+        { TTL: 300, urgency: 'high' }
       )
-      return json({ ok: true, pushed })
+      return json({ ok: true, pushed, errors })
     }
 
     // Получатель: явный user_id (запросы на пару) либо партнёр по паре.
@@ -136,27 +156,9 @@ serve(async (req) => {
       data: { type: notif.type, task_id: notif.task_id, notification_id: notif.id },
     })
 
-    let pushed = 0
-    await Promise.all(
-      subs.map(async (sub) => {
-        try {
-          const keys = sub.keys || {}
-          await webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } },
-            payload,
-            { TTL: 86400, urgency: 'high' }
-          )
-          pushed++
-        } catch {
-          // Подписка протухла или отклонена — убираем её.
-          try {
-            await admin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
-          } catch {}
-        }
-      })
-    )
+    const { pushed, errors } = await sendToSubs(subs, payload, { TTL: 86400, urgency: 'high' })
 
-    return json({ ok: true, pushed })
+    return json({ ok: true, pushed, errors })
   } catch (err) {
     return json({ error: String(err?.message || err) }, 500)
   }

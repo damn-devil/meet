@@ -306,6 +306,7 @@ function PushToggle() {
     if (!res) actions.toast('Не удалось отправить тест', 'error')
     else if (res.error) actions.toast(res.error, 'error')
     else if (res.pushed > 0) actions.toast('Пуш отправлен! Проверьте уведомления', 'success')
+    else if (res.errors?.length) actions.toast(res.errors[0], 'error')
     else actions.toast('Нет подписки на этом устройстве', 'error')
   }
 
