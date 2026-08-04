@@ -2673,7 +2673,7 @@ select {
 }
 .app.brutal .chip {
   border: 2px solid var(--brutal-ink);
-  border-radius: 999px;
+  border-radius: 6px;
   box-shadow: 4px 4px 0 var(--brutal-ink);
   backdrop-filter: none;
   background: var(--brutal-card);
@@ -2702,6 +2702,27 @@ select {
   border: 2px solid var(--brutal-ink);
   border-radius: 6px;
   box-shadow: 3px 3px 0 var(--brutal-ink);
+}
+
+/* активное состояние всех кликабельных: красится ТОЛЬКО поверхность,
+   рамка и тень-сдвиг остаются видимыми (заливка ≠ цвет рамки) */
+.app.brutal .chip.active,
+.app.brutal .segmented button.active,
+.app.brutal .tab-item.active,
+.app.brutal .theme-dot.active,
+.app.brutal .accent-dot.active,
+.app.brutal .avatar-opt.active,
+.app.brutal .btn.active,
+.app.brutal .btn-primary.active {
+  background: var(--accent);
+  color: var(--brutal-paper);
+  border: 2px solid var(--brutal-ink);
+  box-shadow: 2px 2px 0 var(--brutal-ink);
+}
+.app.brutal .chip.active .chip-count,
+.app.brutal .segmented button.active .chip-count {
+  background: var(--brutal-muted);
+  color: var(--brutal-paper);
 }
 
 /* аватарки квадратные, в брутал-стиле (резкая рамка + сдвиг-тень) */
