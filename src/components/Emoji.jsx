@@ -77,6 +77,8 @@ function GLYPH(name) {
       return <><rect x="3" y="3" width="18" height="18" rx="4" {...LINE} /><path d="m7 12 3.5 3.5L17 8.5" {...LINE} /></>
     case 'close':
       return <path d="M6 6l12 12M18 6 6 18" {...LINE} />
+    case 'chevron-left':
+      return <path d="m15 18-6-6 6-6" {...LINE} />
     case 'star':
       return <path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.2l-5.8 3.2 1.1-6.4L2.6 9.4l6.5-.9Z" {...SOLID} />
     case 'camera':

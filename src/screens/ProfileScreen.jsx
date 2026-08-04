@@ -333,6 +333,7 @@ function SettingsPanel() {
 function AdminModal({ onClose }) {
   const { actions } = useStore()
 
+  const [page, setPage] = useState('password')
   const [password, setPassword] = useState('')
   const [users, setUsers] = useState(null)
   const [error, setError] = useState('')
@@ -340,11 +341,14 @@ function AdminModal({ onClose }) {
   const [activity, setActivity] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
 
+  const titles = { password: 'Админ-панель', list: 'Пользователи', activity: 'Активность' }
+
   const load = async (pw) => {
     setBusy(true)
     setError('')
     try {
       setUsers(await actions.adminUsers(pw))
+      setPage('list')
     } catch (e) {
       setUsers(null)
       setError(e.message || 'Не удалось войти')
@@ -358,6 +362,7 @@ function AdminModal({ onClose }) {
     setError('')
     try {
       setActivity(await actions.adminActivity(password, id))
+      setPage('activity')
     } catch (e) {
       setError(e.message || 'Не удалось загрузить активность')
     } finally {
@@ -380,15 +385,24 @@ function AdminModal({ onClose }) {
     }
   }
 
+  const goBack = () => {
+    if (page === 'activity') setPage('list')
+    else if (page === 'list') setPage('password')
+    else onClose()
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>Админ-панель</h2>
+          <button className="icon-btn" onClick={goBack} aria-label="Назад">
+            <Emoji name="chevron-left" size={18} />
+          </button>
+          <h2>{titles[page]}</h2>
           <button className="icon-btn" onClick={onClose}><Emoji name="close" size={18} /></button>
         </div>
         <div className="modal-body">
-          {!users ? (
+          {page === 'password' && (
             <>
               <p className="admin-hint">Введите пароль администратора, чтобы увидеть список пользователей.</p>
               <label className="field">
@@ -408,18 +422,20 @@ function AdminModal({ onClose }) {
                 </button>
               </div>
             </>
-          ) : (
+          )}
+
+          {page === 'list' && (
             <>
               <div className="admin-top">
-                <span className="admin-count">Пользователей: {users.length}</span>
+                <span className="admin-count">Пользователей: {users?.length ?? 0}</span>
                 <button className="btn btn-soft" disabled={busy} onClick={() => load(password)}>
                   Обновить
                 </button>
               </div>
               {error && <p className="form-error">{error}</p>}
-              {users.length === 0 && <p className="admin-hint">Пользователей пока нет</p>}
+              {(!users || users.length === 0) && <p className="admin-hint">Пользователей пока нет</p>}
               <div className="admin-list">
-                {users.map((u) => (
+                {(users || []).map((u) => (
                   <div key={u.id} className="admin-row">
                     <div className="admin-row-main">
                       <span className="admin-name">{u.name || '—'}</span>
@@ -447,16 +463,25 @@ function AdminModal({ onClose }) {
               </div>
             </>
           )}
-          {activity && <AdminActivity data={activity} onClose={() => setActivity(null)} />}
+
+          {page === 'activity' && activity && (
+            <div className="admin-activity">
+              {ACTIVITY_ROWS(activity).map(([k, v]) => (
+                <div key={k} className="admin-activity-row">
+                  <span>{k}</span>
+                  <b>{v ?? '—'}</b>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-function AdminActivity({ data, onClose }) {
-  const a = data
-  const rows = [
+function ACTIVITY_ROWS(a) {
+  return [
     ['Почта', a.user?.email],
     ['Имя', a.profile?.name],
     ['Юзернейм', a.profile?.username || '—'],
@@ -470,24 +495,4 @@ function AdminActivity({ data, onClose }) {
     ['Запросов в пару', a.requests],
     ['Завершённых встреч', a.events_completed],
   ]
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <h2>Активность</h2>
-          <button className="icon-btn" onClick={onClose}><Emoji name="close" size={18} /></button>
-        </div>
-        <div className="modal-body">
-          <div className="admin-activity">
-            {rows.map(([k, v]) => (
-              <div key={k} className="admin-activity-row">
-                <span>{k}</span>
-                <b>{v ?? '—'}</b>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
 }
