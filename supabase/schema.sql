@@ -1223,9 +1223,6 @@ begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'couple_requests') then
     alter publication supabase_realtime add table public.couple_requests;
   end if;
-  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications') then
-    alter publication supabase_realtime add table public.notifications;
-  end if;
 end
 $$;
 
@@ -1478,6 +1475,15 @@ grant execute on function public.get_unseen_notifications() to authenticated;
 grant execute on function public.mark_notifications_seen() to authenticated;
 grant execute on function public.save_push_subscription(text, jsonb) to authenticated;
 grant execute on function public.remove_push_subscription(text) to authenticated;
+
+-- Realtime для уведомлений добавляется здесь: таблица создана только сейчас.
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications') then
+    alter publication supabase_realtime add table public.notifications;
+  end if;
+end
+$$;
 
 -- ============================================================
 -- Админ-панель (доступ только для is_admin=true, см. комментарий выше)
