@@ -2455,7 +2455,7 @@ select {
 .app.brutal {
   --brutal-ink: #1b1b1b;
   --brutal-paper: #efe9dc;
-  --brutal-card: #ffffff;
+  --brutal-card: #f7f2e5;
   --brutal-muted: #6f675a;
   --glass: var(--brutal-card);
   --card: var(--brutal-card);
@@ -2480,7 +2480,6 @@ select {
   --brutal-btn-sh: var(--brutal-ink);
   --brutal-field-bg: var(--brutal-card);
   --brutal-field-fg: var(--brutal-ink);
-  --accent: #9b542e;
 }
 
 /* тёмная тема в брутале: инвертируем бумагу/кард и кнопки */
@@ -2556,7 +2555,7 @@ select {
 }
 .app.brutal .btn-primary {
   background: var(--accent);
-  color: var(--brutal-btn-fg);
+  color: var(--brutal-paper);
 }
 .app.brutal .btn-danger {
   background: var(--red);
@@ -2604,12 +2603,17 @@ select {
 .app.brutal.is-dark .day-cell.is-both {
   color: var(--brutal-ink);
 }
+.app.brutal .setting-group input[type="range"]::-webkit-slider-thumb {
+  background: var(--brutal-btn-bg);
+  border: 2px solid var(--brutal-ink);
+  box-shadow: 3px 3px 0 var(--brutal-ink);
+  border-radius: 50%;
+}
 .app.brutal.is-dark .setting-group input[type="range"]::-webkit-slider-thumb {
   background: var(--brutal-ink);
   border-color: var(--brutal-ink);
   box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.35),
-    inset 0 1px 2px rgba(255, 255, 255, 0.9);
+    0 4px 10px rgba(0, 0, 0, 0.35);
 }
 
 /* ----- поля ввода: терминальные (0xnihilism), цвета из темы ----- */
@@ -2780,6 +2784,49 @@ select {
 .app.brutal .segmented button.active .chip-count {
   background: var(--brutal-muted);
   color: var(--brutal-paper);
+}
+
+/* ----- палитра акцентов в настройках: мягкие квадратные свотчи ----- */
+.app.brutal .accent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+.app.brutal .accent-swatch {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  border: 2px solid var(--brutal-ink);
+  box-shadow: 3px 3px 0 var(--brutal-ink);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--gb-time) var(--gb-ease), box-shadow var(--gb-time) var(--gb-ease);
+}
+.app.brutal .accent-swatch::after {
+  content: "\2713";
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--brutal-paper);
+  opacity: 0;
+  pointer-events: none;
+}
+.app.brutal .accent-swatch.active::after {
+  opacity: 1;
+}
+.app.brutal .accent-swatch.active {
+  box-shadow:
+    0 0 0 2px var(--brutal-card),
+    0 0 0 4px var(--brutal-ink),
+    3px 3px 0 var(--brutal-ink);
+}
+.app.brutal .accent-swatch:active:not(.active) {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--brutal-ink);
 }
 
 /* аватарки квадратные, в брутал-стиле (резкая рамка + сдвиг-тень) */
@@ -2973,8 +3020,8 @@ select {
   color: var(--brutal-ink);
 }
 .app.brutal .day-cell.is-both {
-  background: rebeccapurple;
-  color: white;
+  background: #9b542e;
+  color: var(--brutal-paper);
   box-shadow: 2px 2px 0 var(--brutal-btn-sh);
 }
 .app.brutal .day-cell.is-today {

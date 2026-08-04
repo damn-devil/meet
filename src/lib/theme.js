@@ -52,16 +52,32 @@ export const ACCENTS = {
   pink: '#ff2d55',
   teal: '#30b0c7',
   indigo: '#5856d6',
+  // мягкие приглушённые тона, подходящие под брутал-стиль (достаточно тёмные,
+  // чтобы бежевый текст на них читался и в светлой, и в тёмной теме)
+  clay: '#9b542e',
+  sienna: '#a34f3f',
+  ochre: '#8d6420',
+  moss: '#6d7a3a',
+  pine: '#3f6b4f',
+  tealsoft: '#2f6b6b',
+  slate: '#4e5b6e',
+  plum: '#6d3b5e',
 }
 
-export function accentValue(accent) {
-  if (!accent) return ACCENTS.blue
+// Палитра для выбора акцента в настройках (только мягкие брутальные тона)
+export const SOFT_ACCENTS = {
+  clay: 'Глина', sienna: 'Сиена', ochre: 'Горчица', moss: 'Мох',
+  pine: 'Сосна', tealsoft: 'Морская волна', slate: 'Сланец', plum: 'Слива',
+}
+
+export function accentValue(accent, brutal = false) {
+  if (!accent) return brutal ? ACCENTS.clay : ACCENTS.blue
   if (accent[0] === '#') return accent
-  return ACCENTS[accent] || ACCENTS.blue
+  return ACCENTS[accent] || (brutal ? ACCENTS.clay : ACCENTS.blue)
 }
 
 export function savedAccent() {
-  return accentValue(safeGet('together_accent'))
+  return safeGet('together_accent') || ''
 }
 
 export function savedTheme() {
@@ -69,9 +85,9 @@ export function savedTheme() {
   return THEMES[t] ? t : 'auto'
 }
 
-export function applyTheme(themeName, accentName) {
+export function applyTheme(themeName, accentName, brutal = false) {
   const theme = THEMES[themeName] || THEMES.auto
-  const accent = accentValue(accentName)
+  const accent = accentValue(accentName, brutal)
   const dark = theme.isAuto
     ? window.matchMedia('(prefers-color-scheme: dark)').matches
     : themeName === 'dark'

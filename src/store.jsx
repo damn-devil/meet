@@ -278,7 +278,7 @@ export function StoreProvider({ children }) {
       syncLocalPrefs(data.user)
       dispatch({ type: 'SET_USER', user: data.user })
       dispatch({ type: 'SET_COUPLE', couple: data.couple })
-      applyTheme(savedTheme(), savedAccent())
+      applyTheme(savedTheme(), savedAccent(), state.brutal)
       return data
     },
     uploadAvatar: (file, ext) => api.uploadAvatar(file, ext),
@@ -398,7 +398,7 @@ export function useThemeInit() {
   useEffect(() => {
     const theme = savedTheme()
     const apply = () => {
-      const dark = applyTheme(theme, state.user?.accent || savedAccent())
+      const dark = applyTheme(theme, state.user?.accent || savedAccent(), state.brutal)
       actions.setDark(dark)
     }
     apply()

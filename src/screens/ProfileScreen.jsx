@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store.jsx'
 import { THEMES } from '../lib/theme.js'
-import { applyTheme, safeSet, savedAccent, savedTheme } from '../lib/theme.js'
+import { applyTheme, safeSet, savedAccent, savedTheme, SOFT_ACCENTS, accentValue } from '../lib/theme.js'
 import { Avatar } from '../components/Avatar.jsx'
 import { CropAvatar } from '../components/CropAvatar.jsx'
 import { CoupleSection } from './CoupleScreen.jsx'
@@ -270,9 +270,18 @@ function SettingsPanel() {
 
   const changeTheme = (theme) => {
     safeSet('together_theme', theme)
-    const dark = applyTheme(theme, savedAccent())
+    const dark = applyTheme(theme, savedAccent(), state.brutal)
     actions.setDark(dark)
     actions.flash()
+  }
+
+  const setAccent = async (name) => {
+    try {
+      await actions.updateMe({ accent: name })
+      actions.toast(name ? 'Акцент обновлён' : 'Акцент сброшен')
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    }
   }
 
   const uploadBg = (e) => {
@@ -324,6 +333,28 @@ function SettingsPanel() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="setting-group">
+        <span className="setting-label">Акцент</span>
+        <p className="bg-hint">Мягкие тона, подобранные под стиль приложения — ничего не мешает читать.</p>
+        <div className="accent-row">
+          {Object.entries(SOFT_ACCENTS).map(([key, label]) => (
+            <button
+              key={key}
+              className={`accent-swatch ${state.user?.accent === key ? 'active' : ''}`}
+              style={{ background: accentValue(key, state.brutal) }}
+              title={label}
+              aria-label={label}
+              onClick={() => setAccent(key)}
+            />
+          ))}
+        </div>
+        {state.user?.accent && (
+          <button className="btn btn-soft btn-block" style={{ marginTop: 12 }} onClick={() => setAccent('')}>
+            Сбросить акцент
+          </button>
+        )}
       </div>
 
       <div className="setting-group">
