@@ -1335,7 +1335,8 @@ $$;
 
 -- Уведомления: единственный источник того, что нужно показать партнёру.
 -- Каждое событие создаёт ровно одну запись — так не бывает повторов
--- «одно и то же». Клиент показывает их (тост/пуш) и помечает seen_at.
+-- «одно и то же». Клиент показывает их (тост/пуш), помечает seen_at
+-- (показано в приложении) и pushed_at (доставлено пушем).
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -1346,8 +1347,12 @@ create table if not exists public.notifications (
   message text not null,
   data jsonb not null default '{}'::jsonb,
   seen_at timestamptz,
+  pushed_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+-- Для уже созданных таблиц (после повторного прогона schema.sql)
+alter table public.notifications add column if not exists pushed_at timestamptz;
 
 create index if not exists idx_notifications_user
   on public.notifications (user_id, created_at desc);

@@ -9,6 +9,7 @@ import { MoodMini } from '../components/MoodBar.jsx'
 import { Emoji, avatarName } from '../components/Emoji.jsx'
 import { Loader } from '../components/Loader.jsx'
 import { HelpModal, AboutModal, PrivacyModal } from './SettingsInfo.jsx'
+import { Modal } from '../components/Modal.jsx'
 import { pushSupported, getPushStatus, enablePush, disablePush } from '../lib/push.js'
 
 function dataUrlToBlob(dataUrl) {
@@ -524,17 +525,8 @@ function AdminModal({ onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <button className="icon-btn" onClick={goBack} aria-label="Назад">
-            <Emoji name="chevron-left" size={18} />
-          </button>
-          <h2>{titles[page]}</h2>
-          <button className="icon-btn" onClick={onClose}><Emoji name="close" size={18} /></button>
-        </div>
-        <div className="modal-body">
-          {page === 'list' && (
+    <Modal title={titles[page]} onClose={onClose} onBack={goBack}>
+      {page === 'list' && (
             <>
               <div className="admin-top">
                 <span className="admin-count">Пользователей: {users?.length ?? 0}</span>
@@ -601,9 +593,7 @@ function AdminModal({ onClose }) {
               </div>
             </>
           )}
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

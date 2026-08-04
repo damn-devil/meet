@@ -1,20 +1,12 @@
-import { Emoji } from '../components/Emoji.jsx'
+import { Modal } from '../components/Modal.jsx'
 
 const APP_VERSION = '1.0'
 
 function InfoModal({ title, onClose, children }) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <h2>{title}</h2>
-          <button className="icon-btn" onClick={onClose}><Emoji name="close" size={18} /></button>
-        </div>
-        <div className="modal-body info-body">
-          {children}
-        </div>
-      </div>
-    </div>
+    <Modal title={title} onClose={onClose}>
+      <div className="info-body">{children}</div>
+    </Modal>
   )
 }
 

@@ -47,7 +47,30 @@ export async function getPushStatus() {
   }
 }
 
+function withTimeout(promise, ms, message) {
+  let timer
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
+
+async function subscribeAndSave(reg) {
+  const existing = await reg.pushManager.getSubscription()
+  const sub = existing || (await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY),
+  }))
+  const json = sub.toJSON()
+  await api.savePushSubscription(json.endpoint, {
+    p256dh: json.keys?.p256dh || '',
+    auth: json.keys?.auth || '',
+  })
+}
+
 // Включить уведомления: спросить разрешение, подписаться и сохранить в БД.
+// Подписка/сохранение обёрнуты в таймаут: если пуш-сервис не отвечает,
+// возвращаем ошибку вместо бесконечного спиннера на кнопке.
 export async function enablePush() {
   if (!pushSupported()) return { ok: false, error: 'Браузер не поддерживает push-уведомления' }
   if (Notification.permission === 'denied') return { ok: false, error: 'Разрешение на уведомления заблокировано' }
@@ -61,17 +84,13 @@ export async function enablePush() {
     if (permission !== 'granted') return { ok: false, error: 'Вы не разрешили уведомления' }
   }
 
-  const existing = await reg.pushManager.getSubscription()
-  const sub = existing || (await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY),
-  }))
-
-  const json = sub.toJSON()
-  await api.savePushSubscription(json.endpoint, {
-    p256dh: json.keys?.p256dh || '',
-    auth: json.keys?.auth || '',
-  })
+  try {
+    await withTimeout(subscribeAndSave(reg), 20000, 'Пуш-сервис не ответил вовремя — попробуйте ещё раз')
+  } catch (err) {
+    const stale = await reg.pushManager.getSubscription().catch(() => null)
+    if (stale) await stale.unsubscribe().catch(() => {})
+    return { ok: false, error: err?.message || 'Не удалось включить уведомления' }
+  }
   try {
     localStorage.setItem(KEY, '1')
   } catch {}

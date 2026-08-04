@@ -2,9 +2,9 @@
 //
 // Клиент зовёт эту функцию «в фоне» после действия (создано событие, отметка
 // «на месте», оценка, запрос на перенос и т.п.). Функция берёт из БД самое
-// свежее непросмотренное уведомление получателя и отправляет его по всем его
-// подпискам браузера (Web Push). Уведомления создаёт сама БД (таблица
-// notifications) — здесь мы их только доставляем, поэтому повторов нет.
+// свежее ещё не отправленное уведомление получателя и отправляет его по всем
+// его подпискам браузера (Web Push). Уведомления создаёт сама БД (таблица
+// notifications), а каждое из них отправляется ровно один раз (флаг pushed_at).
 //
 // Переменные окружения функции:
 //   VAPID_PUBLIC_KEY   — публичный ключ VAPID (base64url)
@@ -78,18 +78,23 @@ serve(async (req) => {
     }
     if (!recipientId) return json({ ok: true, pushed: 0 })
 
-    // Самое свежее непросмотренное уведомление получателя (с фильтром по типу/задаче).
+    // Самое свежее ещё не отправленное уведомление получателя (с фильтром
+    // по типу/задаче). Отправляем по флагу pushed_at, а не seen_at: «просмотрено»
+    // клиент помечает сразу при тосте в реальном времени, и иначе пуш не успевал бы.
     let query = admin
       .from('notifications')
       .select('*')
       .eq('user_id', recipientId)
-      .is('seen_at', null)
+      .is('pushed_at', null)
       .order('created_at', { ascending: false })
       .limit(1)
     if (type) query = query.eq('type', type)
     if (taskId) query = query.eq('task_id', taskId)
     const { data: notif } = await query.maybeSingle()
     if (!notif) return json({ ok: true, pushed: 0 })
+
+    // Помечаем отправленным ДО доставки, чтобы повторный вызов не пушил дубль.
+    await admin.from('notifications').update({ pushed_at: new Date().toISOString() }).eq('id', notif.id)
 
     const { data: subs } = await admin
       .from('push_subscriptions')
