@@ -4,6 +4,7 @@ import { TasksScreen } from './screens/TasksScreen.jsx'
 import { ProfileScreen } from './screens/ProfileScreen.jsx'
 import { CoupleScreen } from './screens/CoupleScreen.jsx'
 import { CalendarScreen } from './screens/CalendarScreen.jsx'
+import { StatsScreen } from './screens/StatsScreen.jsx'
 import { TaskDetailScreen } from './screens/TaskDetailScreen.jsx'
 import { Toast } from './components/Toast.jsx'
 import { Icon } from './components/Icon.jsx'
@@ -126,6 +127,8 @@ function AppInner() {
     screen = <CalendarScreen />
   } else if (state.view === 'couple') {
     screen = <CoupleScreen />
+  } else if (state.view === 'stats') {
+    screen = <StatsScreen />
   } else if (state.view === 'profile') {
     screen = <ProfileScreen />
   } else {
@@ -207,6 +210,7 @@ function TabBar() {
     { id: 'tasks', icon: 'calendar', label: 'События' },
     { id: 'calendar', icon: 'grid', label: 'Календарь' },
     { id: 'couple', icon: 'heart', label: 'Пара' },
+    { id: 'stats', icon: 'chart', label: 'Статистика' },
     { id: 'profile', icon: 'person', label: 'Профиль' },
   ]
   const active = state.view === 'task' ? 'tasks' : state.view

@@ -67,6 +67,14 @@ const PATHS = {
       <rect x="14" y="14" width="7" height="7" rx="1.6" />
     </>
   ),
+  chart: (
+    <>
+      <path d="M3 21h18" />
+      <rect x="5" y="13" width="4" height="8" rx="1" />
+      <rect x="11" y="8" width="4" height="13" rx="1" />
+      <rect x="17" y="4" width="4" height="17" rx="1" />
+    </>
+  ),
 }
 
 export function Icon({ name, size = 24, strokeWidth = 1.8, className }) {
