@@ -55,20 +55,40 @@ export const api = {
   },
   login: async ({ email, password }) => {
     const client = supabaseReady()
-    const { data, error } = await client.auth.signInWithPassword({ email, password })
+    const { error } = await client.auth.signInWithPassword({ email, password })
     if (error) throw new Error(authError(error))
-    let me = await api.me()
-    if (!me.user) {
-      const name = data.user?.user_metadata?.name || 'Пользователь'
-      await rpc('create_profile', { p_name: name })
-      me = await api.me()
-    }
-    return me
+    return api.me()
   },
   logout: async () => {
     await clearToken()
   },
-  me: () => rpc('get_me'),
+  signInWithProvider: async (provider) => {
+    const client = supabaseReady()
+    const redirectTo = `${window.location.origin}${window.location.pathname}`
+    const { error } = await client.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo },
+    })
+    if (error) throw new Error(error.message || 'Не удалось войти')
+  },
+  me: async () => {
+    let data = await rpc('get_me')
+    if (data && !data.user) {
+      // Сессия есть, но профиль ещё не создан (первый вход через OAuth)
+      // — автоматически создаём его, имя берём из метаданных провайдера.
+      const client = supabaseReady()
+      const { data: s } = await client.auth.getSession()
+      const u = s?.session?.user
+      const meta = u?.user_metadata || {}
+      const email = u?.email || ''
+      const name =
+        meta?.name || meta?.full_name || meta?.user_name ||
+        (email ? email.split('@')[0] : 'Пользователь')
+      await rpc('create_profile', { p_name: name })
+      data = await rpc('get_me')
+    }
+    return data
+  },
   updateMe: async (body) => {
     await rpc('update_profile', {
       p_name: body.name,

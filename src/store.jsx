@@ -208,6 +208,9 @@ export function StoreProvider({ children }) {
       connectRequests()
       return data
     },
+    signInWithProvider: async (provider) => {
+      await api.signInWithProvider(provider)
+    },
     register: async (name, email, password) => {
       const data = await api.register({ name, email, password })
       syncLocalPrefs(data.user)

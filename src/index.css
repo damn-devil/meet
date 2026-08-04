@@ -465,6 +465,32 @@ select {
   gap: 14px;
   text-align: left;
 }
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 12px;
+  color: var(--text2);
+  font-size: 13px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--hairline);
+}
+.auth-social {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.auth-social .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
 .auth-footer {
   color: var(--text2);
   font-size: 13px;
