@@ -2183,7 +2183,11 @@ select {
 .segmented button,
 .avatar-opt,
 .theme-dot,
-.accent-dot {
+.accent-dot,
+.tab-item,
+.day-cell,
+.task-card,
+.avatar-upload-btn {
   position: relative;
   isolation: isolate;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
@@ -2521,7 +2525,16 @@ select {
 .app.brutal .btn-soft:active,
 .app.brutal .btn-danger:active,
 .app.brutal .btn-danger-soft:active,
-.app.brutal .icon-btn:active {
+.app.brutal .icon-btn:active,
+.app.brutal .chip:active,
+.app.brutal .segmented button:active,
+.app.brutal .avatar-opt:active,
+.app.brutal .theme-dot:active,
+.app.brutal .accent-dot:active,
+.app.brutal .tab-item:active,
+.app.brutal .day-cell:active,
+.app.brutal .task-card:active,
+.app.brutal .avatar-upload-btn:active {
   transform: translate(4px, 4px);
   box-shadow: 0 0 0 var(--brutal-ink);
   filter: none;
@@ -2694,7 +2707,7 @@ select {
 /* аватарки квадратные, в брутал-стиле (резкая рамка + сдвиг-тень) */
 .app.brutal .avatar-img,
 .app.brutal .avatar-emoji {
-  border-radius: 3px;
+  border-radius: 6px;
   border: 2px solid var(--brutal-ink);
   box-shadow: 3px 3px 0 var(--brutal-btn-sh);
   background: var(--brutal-card);
