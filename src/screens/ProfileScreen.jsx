@@ -11,6 +11,7 @@ import { Loader } from '../components/Loader.jsx'
 import { HelpModal, AboutModal, PrivacyModal } from './SettingsInfo.jsx'
 import { Modal } from '../components/Modal.jsx'
 import { pushSupported, getPushStatus, enablePush, disablePush } from '../lib/push.js'
+import { sendPush } from '../api.js'
 
 function dataUrlToBlob(dataUrl) {
   const [meta, b64] = dataUrl.split(',')
@@ -271,6 +272,7 @@ function PushToggle() {
   const { actions } = useStore()
   const [status, setStatus] = useState({ supported: pushSupported(), permission: 'unsupported', subscribed: false, enabled: false })
   const [busy, setBusy] = useState(false)
+  const [testBusy, setTestBusy] = useState(false)
 
   const refresh = () => getPushStatus().then(setStatus).catch(() => {})
   useEffect(() => { refresh() }, [])
@@ -297,6 +299,16 @@ function PushToggle() {
     await refresh()
   }
 
+  const testPush = async () => {
+    setTestBusy(true)
+    const res = await sendPush('test', null, null).catch(() => ({ error: 'Сеть недоступна' }))
+    setTestBusy(false)
+    if (!res) actions.toast('Не удалось отправить тест', 'error')
+    else if (res.error) actions.toast(res.error, 'error')
+    else if (res.pushed > 0) actions.toast('Пуш отправлен! Проверьте уведомления', 'success')
+    else actions.toast('Нет подписки на этом устройстве', 'error')
+  }
+
   return (
     <div className="setting-group">
       <span className="setting-label">Пуш-уведомления</span>
@@ -312,6 +324,11 @@ function PushToggle() {
       ) : (
         <button className="btn btn-primary btn-block" disabled={busy} onClick={turnOn}>
           {busy ? <span className="btn-busy"><Loader size={16} /> …</span> : 'Включить уведомления'}
+        </button>
+      )}
+      {status.enabled && (
+        <button className="btn btn-soft btn-block" disabled={testBusy} onClick={testPush}>
+          {testBusy ? <span className="btn-busy"><Loader size={16} /> …</span> : 'Тест пуша'}
         </button>
       )}
     </div>

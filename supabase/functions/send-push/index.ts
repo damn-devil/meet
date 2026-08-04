@@ -60,6 +60,33 @@ serve(async (req) => {
     const taskId = body.task_id ? String(body.task_id) : null
     const toUserId = body.to_user_id ? String(body.to_user_id) : null
 
+    // Тестовый пуш: шлём сами себе, без таблицы уведомлений. Используется
+    // кнопкой «Тест пуша», чтобы проверить всю цепочку на одном устройстве.
+    if (type === 'test') {
+      const { data: mySubs } = await admin
+        .from('push_subscriptions')
+        .select('endpoint, keys')
+        .eq('user_id', me.user.id)
+      let pushed = 0
+      await Promise.all(
+        (mySubs || []).map(async (sub) => {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: sub.keys || {} },
+              JSON.stringify({ title: 'Universe of Plans', body: 'Тест: пуш работает!', url: '.' }),
+              { TTL: 300, urgency: 'high' }
+            )
+            pushed++
+          } catch {
+            try {
+              await admin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+            } catch {}
+          }
+        })
+      )
+      return json({ ok: true, pushed })
+    }
+
     // Получатель: явный user_id (запросы на пару) либо партнёр по паре.
     let recipientId = toUserId
     if (!recipientId) {
