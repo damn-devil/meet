@@ -100,7 +100,7 @@ serve(async (req) => {
     // Тестовый пуш: шлём сами себе, без таблицы уведомлений. Используется
     // кнопкой «Тест пуша», чтобы проверить всю цепочку на одном устройстве.
     if (type === 'test') {
-      const { data: profile } = await admin
+      const { data: profile, error: profileError } = await admin
         .from('profiles')
         .select('couple_id')
         .eq('id', me.user.id)
@@ -115,6 +115,7 @@ serve(async (req) => {
         coupleId: profile?.couple_id || null,
         subsCount: mySubs?.length || 0,
         subsError: subsError?.message || null,
+        profileError: profileError?.message || null,
       }
       if (!mySubs?.length) return json({ ok: true, pushed: 0, errors: ['Нет подписок в БД'], debug })
       const { pushed, errors } = await sendToSubs(

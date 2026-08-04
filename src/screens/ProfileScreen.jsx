@@ -340,6 +340,7 @@ function PushToggle() {
           <br />Функция: {(debugInfo.url || '').replace('https://', '')}
           <br />user: {debugInfo.userId} · couple: {debugInfo.coupleId} · подписок: {debugInfo.subsCount}
           {debugInfo.subsError ? <><br />subsErr: {debugInfo.subsError}</> : null}
+          {debugInfo.profileError ? <><br />profileErr: {debugInfo.profileError}</> : null}
         </p>
       )}
     </div>

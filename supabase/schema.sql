@@ -1475,6 +1475,13 @@ create policy "push_subs_delete" on public.push_subscriptions
 
 -- Права для новых объектов добавляются здесь: блок «Права» выше выполняется
 -- до создания этих таблиц/функций, поэтому grants задаём явно.
+-- service_role нужен Edge Function send-push: без явных грантов она получает
+-- «permission denied for table …» (таблицы создаются из SQL Editor).
+grant usage on schema public to service_role;
+grant select on public.profiles to service_role;
+grant select on public.notifications to service_role;
+grant select on public.push_subscriptions to service_role;
+grant select, insert, delete on public.push_subscriptions to authenticated;
 grant select on public.notifications to authenticated;
 grant execute on function public.get_unseen_notifications() to authenticated;
 grant execute on function public.mark_notifications_seen() to authenticated;
