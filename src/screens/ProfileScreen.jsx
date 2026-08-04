@@ -320,9 +320,11 @@ function SettingsPanel() {
 
       <div className="setting-group">
         <span className="setting-label">Сервис</span>
-        <button className="btn btn-soft btn-block" onClick={() => setShowAdmin(true)}>
-          <Emoji name="gear" size={16} /> Админ-панель
-        </button>
+        {state.user?.is_admin && (
+          <button className="btn btn-soft btn-block" onClick={() => setShowAdmin(true)}>
+            <Emoji name="gear" size={16} /> Админ-панель
+          </button>
+        )}
       </div>
 
       {showAdmin && <AdminModal onClose={() => setShowAdmin(false)} />}
@@ -333,25 +335,37 @@ function SettingsPanel() {
 function AdminModal({ onClose }) {
   const { actions } = useStore()
 
-  const [page, setPage] = useState('password')
-  const [password, setPassword] = useState('')
+  const [page, setPage] = useState('list')
   const [users, setUsers] = useState(null)
+  const [logs, setLogs] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [activity, setActivity] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
 
-  const titles = { password: 'Админ-панель', list: 'Пользователи', activity: 'Активность' }
+  const titles = { list: 'Пользователи', activity: 'Активность', logs: 'Журнал' }
 
-  const load = async (pw) => {
+  const load = async () => {
     setBusy(true)
     setError('')
     try {
-      setUsers(await actions.adminUsers(pw))
-      setPage('list')
+      setUsers(await actions.adminUsers())
     } catch (e) {
       setUsers(null)
-      setError(e.message || 'Не удалось войти')
+      setError(e.message || 'Не удалось загрузить список')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const loadLogs = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      setLogs(await actions.adminLogs(100))
+      setPage('logs')
+    } catch (e) {
+      setError(e.message || 'Не удалось загрузить журнал')
     } finally {
       setBusy(false)
     }
@@ -361,7 +375,7 @@ function AdminModal({ onClose }) {
     setBusy(true)
     setError('')
     try {
-      setActivity(await actions.adminActivity(password, id))
+      setActivity(await actions.adminActivity(id))
       setPage('activity')
     } catch (e) {
       setError(e.message || 'Не удалось загрузить активность')
@@ -374,9 +388,9 @@ function AdminModal({ onClose }) {
     setBusy(true)
     setError('')
     try {
-      await actions.adminDeleteUser(password, id)
+      await actions.adminDeleteUser(id)
       setConfirmId(null)
-      await load(password)
+      await load()
       actions.toast('Пользователь удалён', 'success')
     } catch (e) {
       setError(e.message || 'Не удалось удалить')
@@ -386,8 +400,7 @@ function AdminModal({ onClose }) {
   }
 
   const goBack = () => {
-    if (page === 'activity') setPage('list')
-    else if (page === 'list') setPage('password')
+    if (page === 'activity' || page === 'logs') setPage('list')
     else onClose()
   }
 
@@ -402,35 +415,14 @@ function AdminModal({ onClose }) {
           <button className="icon-btn" onClick={onClose}><Emoji name="close" size={18} /></button>
         </div>
         <div className="modal-body">
-          {page === 'password' && (
-            <>
-              <p className="admin-hint">Введите пароль администратора, чтобы увидеть список пользователей.</p>
-              <label className="field">
-                <span>Пароль</span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && load(password)}
-                  autoFocus
-                />
-              </label>
-              {error && <p className="form-error">{error}</p>}
-              <div className="profile-edit-actions">
-                <button className="btn btn-primary" disabled={busy || !password} onClick={() => load(password)}>
-                  {busy ? 'Проверяем…' : 'Войти'}
-                </button>
-              </div>
-            </>
-          )}
-
           {page === 'list' && (
             <>
               <div className="admin-top">
                 <span className="admin-count">Пользователей: {users?.length ?? 0}</span>
-                <button className="btn btn-soft" disabled={busy} onClick={() => load(password)}>
-                  Обновить
-                </button>
+                <div className="admin-top-actions">
+                  <button className="btn btn-soft" disabled={busy} onClick={loadLogs}>Журнал</button>
+                  <button className="btn btn-soft" disabled={busy} onClick={load}>Обновить</button>
+                </div>
               </div>
               {error && <p className="form-error">{error}</p>}
               {(!users || users.length === 0) && <p className="admin-hint">Пользователей пока нет</p>}
@@ -438,7 +430,7 @@ function AdminModal({ onClose }) {
                 {(users || []).map((u) => (
                   <div key={u.id} className="admin-row">
                     <div className="admin-row-main">
-                      <span className="admin-name">{u.name || '—'}</span>
+                      <span className="admin-name">{u.name || '—'} {u.is_admin && <em className="admin-tag">админ</em>}</span>
                       <span className="admin-email">{u.email}</span>
                       {u.username && <span className="admin-email">{u.username}</span>}
                     </div>
@@ -474,10 +466,33 @@ function AdminModal({ onClose }) {
               ))}
             </div>
           )}
+
+          {page === 'logs' && (
+            <>
+              {(!logs || logs.length === 0) && <p className="admin-hint">Журнал пуст</p>}
+              <div className="admin-list">
+                {(logs || []).map((l) => (
+                  <div key={l.id} className="admin-row">
+                    <div className="admin-row-main">
+                      <span className="admin-name">{LOG_ACTION(l.action)}</span>
+                      <span className="admin-email">{l.created_at ? new Date(l.created_at).toLocaleString('ru-RU') : '—'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
   )
+}
+
+function LOG_ACTION(action) {
+  return {
+    view_activity: 'Просмотр активности',
+    delete_user: 'Удаление пользователя',
+  }[action] || action
 }
 
 function ACTIVITY_ROWS(a) {

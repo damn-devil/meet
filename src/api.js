@@ -141,11 +141,10 @@ export const api = {
   stats: () => rpc('get_stats'),
   freeDays: () => rpc('get_free_days'),
   setFreeDay: (day, free) => rpc('set_free_day', { p_day: day, p_free: free }),
-  adminUsers: (password) => rpc('admin_get_users', { p_password: password }),
-  adminActivity: (password, userId) =>
-    rpc('admin_get_activity', { p_password: password, p_user_id: userId }),
-  adminDeleteUser: (password, userId) =>
-    rpc('admin_delete_user', { p_password: password, p_user_id: userId }),
+  adminUsers: () => rpc('admin_get_users'),
+  adminActivity: (userId) => rpc('admin_get_activity', { p_user_id: userId }),
+  adminDeleteUser: (userId) => rpc('admin_delete_user', { p_user_id: userId }),
+  adminLogs: (limit) => rpc('admin_get_logs', { p_limit: limit || 100 }),
 }
 
 let channel = null

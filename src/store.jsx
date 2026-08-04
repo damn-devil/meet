@@ -260,9 +260,10 @@ export function StoreProvider({ children }) {
     },
     searchUsers: (query) => api.searchUsers(query),
     checkUsername: (username) => api.checkUsername(username),
-    adminUsers: (password) => api.adminUsers(password),
-    adminActivity: (password, userId) => api.adminActivity(password, userId),
-    adminDeleteUser: (password, userId) => api.adminDeleteUser(password, userId),
+    adminUsers: () => api.adminUsers(),
+    adminActivity: (userId) => api.adminActivity(userId),
+    adminDeleteUser: (userId) => api.adminDeleteUser(userId),
+    adminLogs: (limit) => api.adminLogs(limit),
     sendRequest: async (toId) => {
       const req = await api.sendCoupleRequest(toId)
       await loadRequests()

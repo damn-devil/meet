@@ -1118,6 +1118,19 @@ select {
   justify-content: space-between;
   margin-bottom: 10px;
 }
+.admin-top-actions {
+  display: flex;
+  gap: 6px;
+}
+.admin-tag {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--green);
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 0 5px;
+  vertical-align: 1px;
+}
 .admin-count {
   color: var(--text2);
   font-size: 13px;

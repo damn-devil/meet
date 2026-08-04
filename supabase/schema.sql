@@ -49,6 +49,32 @@ alter table public.profiles add column if not exists autocheck boolean default t
 alter table public.profiles add column if not exists username text;
 create unique index if not exists idx_profiles_username on public.profiles (username) where username is not null;
 
+-- Админ-флаг: назначить админа можно только из SQL Editor, например:
+--   update public.profiles set is_admin = true
+--   where id = (select id from auth.users where lower(email) = 'admin@example.com');
+alter table public.profiles add column if not exists is_admin boolean default false;
+
+-- Аудит действий админа
+create table if not exists public.admin_logs (
+  id uuid primary key default gen_random_uuid(),
+  admin_id uuid references public.profiles(id) on delete set null,
+  action text not null,
+  target_user_id uuid references public.profiles(id) on delete set null,
+  details jsonb default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+alter table public.admin_logs enable row level security;
+
+-- Помощник: является ли текущий пользователь админом
+create or replace function public.is_admin()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles where id = auth.uid() and is_admin = true
+  )
+$$;
+
 create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
   couple_id uuid not null references public.couples(id) on delete cascade,
@@ -191,7 +217,7 @@ language sql stable security definer set search_path = public
 as $$
   select jsonb_build_object(
     'id', p.id, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url,
-    'username', p.username,
+    'username', p.username, 'is_admin', p.is_admin,
     'bio', p.bio, 'theme', p.theme,
     'accent', p.accent, 'autocheck', p.autocheck,
     'telegram', p.telegram, 'imessage', p.imessage
@@ -983,22 +1009,23 @@ end
 $$;
 
 -- ============================================================
--- Админ-панель (доступ по паролю 228000)
+-- Админ-панель (доступ только для is_admin=true, см. комментарий выше)
 -- ============================================================
 
 -- Список всех пользователей с почтами
-create or replace function public.admin_get_users(p_password text)
+create or replace function public.admin_get_users()
 returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 begin
-  if p_password <> '228000' then raise exception 'Неверный пароль'; end if;
+  if not public.is_admin() then raise exception 'Нет прав администратора'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', u.id,
       'email', u.email,
       'name', p.name,
       'username', p.username,
+      'is_admin', p.is_admin,
       'created_at', u.created_at,
       'last_sign_in_at', u.last_sign_in_at
     ) order by u.created_at desc)
@@ -1009,14 +1036,15 @@ end
 $$;
 
 -- Активность конкретного пользователя
-create or replace function public.admin_get_activity(p_password text, p_user_id uuid)
+create or replace function public.admin_get_activity(p_user_id uuid)
 returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 declare
   v jsonb;
 begin
-  if p_password <> '228000' then raise exception 'Неверный пароль'; end if;
+  if not public.is_admin() then raise exception 'Нет прав администратора'; end if;
+  if p_user_id is null then raise exception 'Не указан пользователь'; end if;
   select jsonb_build_object(
     'user', jsonb_build_object(
       'id', u.id, 'email', u.email,
@@ -1040,21 +1068,55 @@ begin
   from auth.users u
   left join public.profiles p on p.id = u.id
   where u.id = p_user_id;
+  insert into public.admin_logs (admin_id, action, target_user_id)
+  values (auth.uid(), 'view_activity', p_user_id);
   return v;
 end
 $$;
 
 -- Полное удаление пользователя (его пара, события, оценки, запросы)
-create or replace function public.admin_delete_user(p_password text, p_user_id uuid)
+create or replace function public.admin_delete_user(p_user_id uuid)
 returns jsonb
 language plpgsql security definer set search_path = public
 as $$
+declare
+  v_admin uuid := auth.uid();
 begin
-  if p_password <> '228000' then raise exception 'Неверный пароль'; end if;
+  if not public.is_admin() then raise exception 'Нет прав администратора'; end if;
   if p_user_id is null then raise exception 'Не указан пользователь'; end if;
+  if p_user_id = v_admin then raise exception 'Нельзя удалить собственный аккаунт'; end if;
+  insert into public.admin_logs (admin_id, action, target_user_id)
+  values (v_admin, 'delete_user', p_user_id);
   delete from public.couple_requests where from_id = p_user_id or to_id = p_user_id;
   delete from public.couples where id in (select couple_id from public.profiles where id = p_user_id);
   delete from auth.users where id = p_user_id;
   return jsonb_build_object('ok', true);
 end
 $$;
+
+-- Просмотр журнала действий админов
+create or replace function public.admin_get_logs(p_limit int default 100)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then raise exception 'Нет прав администратора'; end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', l.id,
+      'admin_id', l.admin_id,
+      'action', l.action,
+      'target_user_id', l.target_user_id,
+      'created_at', l.created_at
+    ) order by l.created_at desc)
+    from public.admin_logs l
+    limit greatest(1, least(p_limit, 500))
+  ), '[]'::jsonb);
+end
+$$;
+
+-- Старые сигнатуры с паролем больше не нужны — убираем, чтобы нельзя было
+-- вызвать их с паролем мимо проверки прав.
+drop function if exists public.admin_get_users(text);
+drop function if exists public.admin_get_activity(text, uuid);
+drop function if exists public.admin_delete_user(text, uuid);
