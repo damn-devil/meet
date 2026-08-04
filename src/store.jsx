@@ -18,6 +18,7 @@ const initialState = {
   stats: { completed: 0, missed: 0, cancelled: 0, avgRating: null },
   view: 'tasks',
   selectedTask: null,
+  refreshKey: 0,
   toast: null,
   loading: true,
   bootError: null,
@@ -61,9 +62,11 @@ function reducer(state, action) {
     case 'SET_RECOVERY':
       return { ...state, recovery: action.recovery }
     case 'VIEW':
-      return { ...state, view: action.view, selectedTask: action.view === 'task' ? action.id : state.selectedTask }
+      return { ...state, view: action.view, selectedTask: action.view === 'task' ? action.id : state.selectedTask, refreshKey: state.refreshKey + 1 }
     case 'OPEN_TASK':
-      return { ...state, view: 'task', selectedTask: action.id }
+      return { ...state, view: 'task', selectedTask: action.id, refreshKey: state.refreshKey + 1 }
+    case 'FLASH':
+      return { ...state, refreshKey: state.refreshKey + 1 }
     case 'TOAST':
       return { ...state, toast: action.toast }
     case 'LOGOUT':
@@ -358,6 +361,7 @@ export function StoreProvider({ children }) {
       dispatch({ type: 'UPSERT_TASK', task })
     },
     toast: (msg, type) => showToast(dispatch, msg, type),
+    flash: () => dispatch({ type: 'FLASH' }),
     setBg: async (url) => {
       if (state.couple) {
         try {

@@ -3204,6 +3204,30 @@ select {
   color: var(--brutal-ink);
 }
 
+/* ---------- Обновление экрана (как у электронной книги / Google Pixel) ----------
+   Короткая вспышка-сброс полотна при смене темы, переключении вкладок и входе в раздел. */
+.screen-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  animation: eink-flash 0.34s ease-out forwards;
+}
+@keyframes eink-flash {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  58% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* ---------- Доступность: уважаем системную настройку движения ---------- */
 @media (prefers-reduced-motion: reduce) {
   *,
