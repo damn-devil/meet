@@ -259,6 +259,10 @@ export function StoreProvider({ children }) {
       return couple
     },
     searchUsers: (query) => api.searchUsers(query),
+    checkUsername: (username) => api.checkUsername(username),
+    adminUsers: (password) => api.adminUsers(password),
+    adminActivity: (password, userId) => api.adminActivity(password, userId),
+    adminDeleteUser: (password, userId) => api.adminDeleteUser(password, userId),
     sendRequest: async (toId) => {
       const req = await api.sendCoupleRequest(toId)
       await loadRequests()

@@ -45,6 +45,10 @@ alter table public.profiles add column if not exists avatar_url text default '';
 alter table public.profiles add column if not exists accent text default '';
 alter table public.profiles add column if not exists autocheck boolean default true;
 
+-- Юзернейм: начинается с @, только латиница/цифры/_/., уникален для каждого пользователя
+alter table public.profiles add column if not exists username text;
+create unique index if not exists idx_profiles_username on public.profiles (username) where username is not null;
+
 create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
   couple_id uuid not null references public.couples(id) on delete cascade,
@@ -187,6 +191,7 @@ language sql stable security definer set search_path = public
 as $$
   select jsonb_build_object(
     'id', p.id, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url,
+    'username', p.username,
     'bio', p.bio, 'theme', p.theme,
     'accent', p.accent, 'autocheck', p.autocheck,
     'telegram', p.telegram, 'imessage', p.imessage
@@ -205,6 +210,7 @@ as $$
     'members', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', p.id, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url,
+        'username', p.username,
         'bio', p.bio, 'theme', p.theme,
         'accent', p.accent, 'autocheck', p.autocheck,
         'telegram', p.telegram, 'imessage', p.imessage
@@ -335,20 +341,50 @@ as $$
   returning public.profile_view(id)
 $$;
 
--- Убираем старую сигнатуру без p_accent/p_autocheck, иначе при вызове с частью
--- аргументов Postgres не сможет выбрать между перегрузками.
-drop function if exists public.update_profile(text, text, text, text, text, text, text);
+-- Убираем все старые сигнатуры update_profile (с и без p_accent), иначе при
+-- вызове с частью аргументов Postgres не сможет выбрать между перегрузками.
+do $$ declare r record; begin
+  for r in
+    select p.oid::regprocedure as sig
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'update_profile'
+  loop
+    execute 'drop function ' || r.sig || ' cascade';
+  end loop;
+end $$;
 
 create or replace function public.update_profile(
   p_name text default null, p_avatar text default null,
   p_avatar_url text default null,
   p_bio text default null, p_theme text default null,
   p_accent text default null, p_autocheck boolean default null,
-  p_telegram text default null, p_imessage text default null
+  p_telegram text default null, p_imessage text default null,
+  p_username text default null
 )
 returns jsonb
-language sql security definer set search_path = public
+language plpgsql security definer set search_path = public
 as $$
+declare
+  v_username text;
+begin
+  if p_username is not null then
+    v_username := lower(btrim(p_username));
+    if v_username = '' then
+      raise exception 'Укажите юзернейм';
+    end if;
+    if v_username !~ '^@[a-z0-9_.]{1,24}$' then
+      raise exception 'Юзернейм должен начинаться с @ и состоять из латинских букв, цифр, _ и .';
+    end if;
+    if exists (
+      select 1 from public.profiles
+      where username = v_username and id <> auth.uid()
+    ) then
+      raise exception 'Этот юзернейм уже занят';
+    end if;
+    update public.profiles set username = v_username where id = auth.uid();
+  end if;
+
   update public.profiles set
     name = coalesce(nullif(btrim(p_name), ''), name),
     avatar = coalesce(p_avatar, avatar),
@@ -359,8 +395,24 @@ as $$
     autocheck = case when p_autocheck is not null then p_autocheck else autocheck end,
     telegram = coalesce(btrim(p_telegram), telegram),
     imessage = coalesce(btrim(p_imessage), imessage)
-  where id = auth.uid()
-  returning public.profile_view(id)
+  where id = auth.uid();
+
+  return public.profile_view(auth.uid());
+end
+$$;
+
+-- Проверка свободен ли юзернейм (для живой проверки в профиле)
+create or replace function public.check_username(p_username text)
+returns jsonb
+language sql security definer set search_path = public
+as $$
+  select jsonb_build_object(
+    'username', coalesce(lower(btrim(p_username)), ''),
+    'available', not exists (
+      select 1 from public.profiles
+      where username = lower(btrim(p_username)) and id <> auth.uid()
+    )
+  )
 $$;
 
 create or replace function public.get_tasks()
@@ -660,8 +712,8 @@ as $$
   select jsonb_build_object(
     'id', r.id, 'from_id', r.from_id, 'to_id', r.to_id, 'status', r.status,
     'created_at', r.created_at,
-    'from', jsonb_build_object('id', f.id, 'name', f.name, 'avatar', f.avatar, 'avatar_url', f.avatar_url),
-    'to', jsonb_build_object('id', t.id, 'name', t.name, 'avatar', t.avatar, 'avatar_url', t.avatar_url)
+    'from', jsonb_build_object('id', f.id, 'name', f.name, 'username', f.username, 'avatar', f.avatar, 'avatar_url', f.avatar_url),
+    'to', jsonb_build_object('id', t.id, 'name', t.name, 'username', t.username, 'avatar', t.avatar, 'avatar_url', t.avatar_url)
   )
   from public.couple_requests r
   join public.profiles f on f.id = r.from_id
@@ -679,18 +731,24 @@ as $$
     and r.status = 'pending'
 $$;
 
--- Поиск людей по имени/никнейму (без тех, кто уже в паре и без себя)
+-- Поиск людей по юзернейму (без тех, кто уже в паре и без себя).
+-- Совпадение идёт по части после @, поэтому не важно пишет ли пользователь @van или van.
 create or replace function public.search_users(p_query text default null)
 returns jsonb
 language sql stable security definer set search_path = public
 as $$
   select coalesce(jsonb_agg(jsonb_build_object(
-    'id', p.id, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url
-  ) order by p.name), '[]'::jsonb)
+    'id', p.id, 'name', p.name, 'username', p.username,
+    'avatar', p.avatar, 'avatar_url', p.avatar_url
+  ) order by p.username), '[]'::jsonb)
   from public.profiles p
   where p.id <> auth.uid()
     and p.couple_id is null
-    and (p_query is null or btrim(p_query) = '' or p.name ilike '%' || btrim(p_query) || '%')
+    and p.username is not null
+    and p_query is not null
+    and btrim(p_query) <> ''
+    and replace(lower(p.username), '@', '')
+        ilike replace(lower(btrim(p_query)), '@', '') || '%'
   limit 20
 $$;
 
@@ -921,5 +979,82 @@ begin
     delete from public.free_days
     where couple_id = v_couple_id and user_id = auth.uid() and day = p_day;
   end if;
+end
+$$;
+
+-- ============================================================
+-- Админ-панель (доступ по паролю 228000)
+-- ============================================================
+
+-- Список всех пользователей с почтами
+create or replace function public.admin_get_users(p_password text)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if p_password <> '228000' then raise exception 'Неверный пароль'; end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', u.id,
+      'email', u.email,
+      'name', p.name,
+      'username', p.username,
+      'created_at', u.created_at,
+      'last_sign_in_at', u.last_sign_in_at
+    ) order by u.created_at desc)
+    from auth.users u
+    left join public.profiles p on p.id = u.id
+  ), '[]'::jsonb);
+end
+$$;
+
+-- Активность конкретного пользователя
+create or replace function public.admin_get_activity(p_password text, p_user_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v jsonb;
+begin
+  if p_password <> '228000' then raise exception 'Неверный пароль'; end if;
+  select jsonb_build_object(
+    'user', jsonb_build_object(
+      'id', u.id, 'email', u.email,
+      'created_at', u.created_at,
+      'confirmed_at', u.confirmed_at,
+      'last_sign_in_at', u.last_sign_in_at
+    ),
+    'profile', jsonb_build_object(
+      'name', p.name, 'username', p.username,
+      'avatar', p.avatar, 'bio', p.bio, 'created_at', p.created_at
+    ),
+    'couple_id', p.couple_id,
+    'tasks_created', (select count(*)::int from public.tasks t where t.created_by = u.id),
+    'checkins', (select count(*)::int from public.checkins k where k.user_id = u.id),
+    'ratings', (select count(*)::int from public.ratings r where r.user_id = u.id),
+    'requests', (select count(*)::int from public.couple_requests q where q.from_id = u.id or q.to_id = u.id),
+    'events_completed', case when p.couple_id is null then 0
+      else (select count(*)::int from public.tasks t where t.couple_id = p.couple_id and t.status = 'completed')
+    end
+  ) into v
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where u.id = p_user_id;
+  return v;
+end
+$$;
+
+-- Полное удаление пользователя (его пара, события, оценки, запросы)
+create or replace function public.admin_delete_user(p_password text, p_user_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if p_password <> '228000' then raise exception 'Неверный пароль'; end if;
+  if p_user_id is null then raise exception 'Не указан пользователь'; end if;
+  delete from public.couple_requests where from_id = p_user_id or to_id = p_user_id;
+  delete from public.couples where id in (select couple_id from public.profiles where id = p_user_id);
+  delete from auth.users where id = p_user_id;
+  return jsonb_build_object('ok', true);
 end
 $$;

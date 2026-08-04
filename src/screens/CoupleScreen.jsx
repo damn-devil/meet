@@ -22,10 +22,15 @@ export function CoupleSection() {
   const [breaking, setBreaking] = useState(false)
 
   const searchUsers = async () => {
-    if (!searchQuery.trim()) return
+    const q = searchQuery.trim().replace(/^@/, '')
+    if (!q) return
+    if (!/^[a-z0-9_.]{1,24}$/i.test(q)) {
+      actions.toast('Юзернейм — только латиница, цифры, _ и .', 'error')
+      return
+    }
     setSearching(true)
     try {
-      const results = await actions.searchUsers(searchQuery.trim())
+      const results = await actions.searchUsers(`@${q.toLowerCase()}`)
       setSearchResults(results || [])
     } catch (e) {
       actions.toast(e.message, 'error')
@@ -151,14 +156,16 @@ export function CoupleSection() {
                 </div>
               )}
 
-              <p className="bg-hint">Найдите партнёра по имени или никнейму и отправьте запрос:</p>
+              <p className="bg-hint">Найдите партнёра по юзернейму (например @alex) и отправьте запрос:</p>
               <div className="search-row">
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
-                  placeholder="Имя или никнейм"
+                  placeholder="@юзернейм"
+                  autoCapitalize="none"
                   autoCorrect="off"
+                  spellCheck="false"
                 />
                 <button className="btn btn-soft" onClick={searchUsers} disabled={searching}>
                   {searching ? '…' : <Emoji name="search" size={16} />}
@@ -169,7 +176,7 @@ export function CoupleSection() {
                   {searchResults.map((u) => (
                     <div key={u.id} className="search-item user-search-item">
                       <Avatar url={u.avatar_url} emoji={u.avatar || '🙂'} size="comment" alt={u.name} />
-                      <span className="search-item-name">{u.name}</span>
+                      <span className="search-item-name">{u.name} {u.username && <em className="search-username">{u.username}</em>}</span>
                       <button
                         className="btn btn-primary btn-sm"
                         disabled={sendingTo === u.id}

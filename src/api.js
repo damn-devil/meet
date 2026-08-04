@@ -80,9 +80,11 @@ export const api = {
       p_autocheck: body.autocheck,
       p_telegram: body.telegram,
       p_imessage: body.imessage,
+      p_username: body.username ?? null,
     })
     return api.me()
   },
+  checkUsername: (username) => rpc('check_username', { p_username: username }),
   deleteAccount: () => rpc('delete_account'),
   deleteAvatarFiles: async () => {
     try {
@@ -139,6 +141,11 @@ export const api = {
   stats: () => rpc('get_stats'),
   freeDays: () => rpc('get_free_days'),
   setFreeDay: (day, free) => rpc('set_free_day', { p_day: day, p_free: free }),
+  adminUsers: (password) => rpc('admin_get_users', { p_password: password }),
+  adminActivity: (password, userId) =>
+    rpc('admin_get_activity', { p_password: password, p_user_id: userId }),
+  adminDeleteUser: (password, userId) =>
+    rpc('admin_delete_user', { p_password: password, p_user_id: userId }),
 }
 
 let channel = null

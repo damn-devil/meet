@@ -113,4 +113,14 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: 'Полночь' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Роза' })).not.toBeInTheDocument()
   })
+
+  it('shows username field in profile editing', async () => {
+    render(<App />)
+    await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getByText('Профиль'))
+    await waitFor(() => expect(screen.getAllByText('Аня').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getByText('Редактировать'))
+    await waitFor(() => expect(screen.getByText('Юзернейм')).toBeInTheDocument())
+    expect(screen.getByPlaceholderText('@логин')).toBeInTheDocument()
+  })
 })

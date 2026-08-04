@@ -30,11 +30,33 @@ export function ProfileScreen() {
   const [cropSrc, setCropSrc] = useState(null)
   const [telegram, setTelegram] = useState(me?.telegram || '')
   const [imessage, setImessage] = useState(me?.imessage || '')
+  const [username, setUsername] = useState(me?.username || '')
+  const [usernameState, setUsernameState] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
   const avatars = ['🐶', '🐼', '🦊', '🐸', '🐰', '🦁', '🐯', '🐹', '🐨']
+
+  const usernamePattern = /^@[a-z0-9_.]{1,24}$/i
+
+  const checkUsername = async (value) => {
+    const v = (value || '').trim()
+    if (!v) {
+      setUsernameState(null)
+      return
+    }
+    if (!usernamePattern.test(v)) {
+      setUsernameState('bad')
+      return
+    }
+    try {
+      const res = await actions.checkUsername(v)
+      setUsernameState(res?.available ? 'free' : 'taken')
+    } catch {
+      setUsernameState(null)
+    }
+  }
 
   const deleteAccount = async () => {
     setDeleting(true)
@@ -49,8 +71,24 @@ export function ProfileScreen() {
   }
 
   const saveProfile = async () => {
+    const u = username.trim()
+    if (u && !usernamePattern.test(u)) {
+      actions.toast('Юзернейм: начните с @, только латиница, цифры, _ и .', 'error')
+      return
+    }
+    if (u && u.toLowerCase() !== (me?.username || '').toLowerCase() && !usernameState) {
+      try {
+        const res = await actions.checkUsername(u)
+        if (!res?.available) {
+          actions.toast('Этот юзернейм уже занят', 'error')
+          return
+        }
+      } catch {
+        /* продолжим; сервер тоже проверит */
+      }
+    }
     try {
-      await actions.updateMe({ name, bio, avatar, avatar_url: avatarUrl, telegram, imessage })
+      await actions.updateMe({ name, bio, avatar, avatar_url: avatarUrl, telegram, imessage, username: u || null })
       setEditing(false)
       actions.toast('Профиль сохранён', 'success')
     } catch (e) {
@@ -73,7 +111,7 @@ export function ProfileScreen() {
       const blob = dataUrlToBlob(dataUrl)
       const url = await actions.uploadAvatar(blob, 'jpg')
       setAvatarUrl(url)
-      await actions.updateMe({ name, bio, avatar, avatar_url: url, telegram, imessage })
+      await actions.updateMe({ name, bio, avatar, avatar_url: url, telegram, imessage, username: username.trim() || null })
       actions.toast('Фото профиля обновлено', 'success')
     } catch (err) {
       actions.toast(err.message, 'error')
@@ -95,6 +133,7 @@ export function ProfileScreen() {
       <div className="profile-head">
         <Avatar url={me?.avatar_url} emoji={me?.avatar} size="big" alt={me?.name} />
         <h2>{me?.name}</h2>
+        {me?.username && <p className="profile-username">{me.username}</p>}
         <p className="profile-bio">{me?.bio || 'Пока ничего о себе'}</p>
         {editing ? (
           <div className="profile-edit">
@@ -114,6 +153,25 @@ export function ProfileScreen() {
               <span>Имя</span>
               <input value={name} onChange={(e) => setName(e.target.value)} />
             </label>
+            <label className="field">
+              <span>Юзернейм</span>
+              <input
+                value={username}
+                onChange={(e) => { setUsername(e.target.value); setUsernameState(null) }}
+                onBlur={() => checkUsername(username)}
+                placeholder="@логин"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+              />
+            </label>
+            {usernameState && (
+              <p className={`username-state ${usernameState}`}>
+                {usernameState === 'bad' && 'Начните с @ и используйте только латиницу, цифры, _ и .'}
+                {usernameState === 'free' && 'Юзернейм свободен'}
+                {usernameState === 'taken' && 'Этот юзернейм уже занят'}
+              </p>
+            )}
             <label className="field">
               <span>О себе</span>
               <input value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Расскажите о себе" />
@@ -226,6 +284,8 @@ function SettingsPanel() {
     actions.toast('Фон сброшен')
   }
 
+  const [showAdmin, setShowAdmin] = useState(false)
+
   return (
     <div className="settings-panel">
       <div className="setting-group">
@@ -258,6 +318,176 @@ function SettingsPanel() {
         </div>
       </div>
 
+      <div className="setting-group">
+        <span className="setting-label">Сервис</span>
+        <button className="btn btn-soft btn-block" onClick={() => setShowAdmin(true)}>
+          <Emoji name="gear" size={16} /> Админ-панель
+        </button>
+      </div>
+
+      {showAdmin && <AdminModal onClose={() => setShowAdmin(false)} />}
+    </div>
+  )
+}
+
+function AdminModal({ onClose }) {
+  const { actions } = useStore()
+
+  const [password, setPassword] = useState('')
+  const [users, setUsers] = useState(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [activity, setActivity] = useState(null)
+  const [confirmId, setConfirmId] = useState(null)
+
+  const load = async (pw) => {
+    setBusy(true)
+    setError('')
+    try {
+      setUsers(await actions.adminUsers(pw))
+    } catch (e) {
+      setUsers(null)
+      setError(e.message || 'Не удалось войти')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const openActivity = async (id) => {
+    setBusy(true)
+    setError('')
+    try {
+      setActivity(await actions.adminActivity(password, id))
+    } catch (e) {
+      setError(e.message || 'Не удалось загрузить активность')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const removeUser = async (id) => {
+    setBusy(true)
+    setError('')
+    try {
+      await actions.adminDeleteUser(password, id)
+      setConfirmId(null)
+      await load(password)
+      actions.toast('Пользователь удалён', 'success')
+    } catch (e) {
+      setError(e.message || 'Не удалось удалить')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h2>Админ-панель</h2>
+          <button className="icon-btn" onClick={onClose}><Emoji name="close" size={18} /></button>
+        </div>
+        <div className="modal-body">
+          {!users ? (
+            <>
+              <p className="admin-hint">Введите пароль администратора, чтобы увидеть список пользователей.</p>
+              <label className="field">
+                <span>Пароль</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && load(password)}
+                  autoFocus
+                />
+              </label>
+              {error && <p className="form-error">{error}</p>}
+              <div className="profile-edit-actions">
+                <button className="btn btn-primary" disabled={busy || !password} onClick={() => load(password)}>
+                  {busy ? 'Проверяем…' : 'Войти'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="admin-top">
+                <span className="admin-count">Пользователей: {users.length}</span>
+                <button className="btn btn-soft" disabled={busy} onClick={() => load(password)}>
+                  Обновить
+                </button>
+              </div>
+              {error && <p className="form-error">{error}</p>}
+              {users.length === 0 && <p className="admin-hint">Пользователей пока нет</p>}
+              <div className="admin-list">
+                {users.map((u) => (
+                  <div key={u.id} className="admin-row">
+                    <div className="admin-row-main">
+                      <span className="admin-name">{u.name || '—'}</span>
+                      <span className="admin-email">{u.email}</span>
+                      {u.username && <span className="admin-email">{u.username}</span>}
+                    </div>
+                    <div className="admin-row-actions">
+                      <button className="btn btn-soft" disabled={busy} onClick={() => openActivity(u.id)}>
+                        Активность
+                      </button>
+                      {confirmId === u.id ? (
+                        <span className="admin-confirm">
+                          Точно?
+                          <button className="btn btn-danger" disabled={busy} onClick={() => removeUser(u.id)}>Да</button>
+                          <button className="btn btn-soft" onClick={() => setConfirmId(null)}>Нет</button>
+                        </span>
+                      ) : (
+                        <button className="btn btn-danger-soft" disabled={busy} onClick={() => setConfirmId(u.id)}>
+                          Удалить
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {activity && <AdminActivity data={activity} onClose={() => setActivity(null)} />}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AdminActivity({ data, onClose }) {
+  const a = data
+  const rows = [
+    ['Почта', a.user?.email],
+    ['Имя', a.profile?.name],
+    ['Юзернейм', a.profile?.username || '—'],
+    ['Зарегистрирован', a.user?.created_at ? new Date(a.user.created_at).toLocaleString('ru-RU') : '—'],
+    ['Вход подтверждён', a.user?.confirmed_at ? new Date(a.user.confirmed_at).toLocaleString('ru-RU') : '—'],
+    ['Последний вход', a.user?.last_sign_in_at ? new Date(a.user.last_sign_in_at).toLocaleString('ru-RU') : '—'],
+    ['В паре', a.couple_id ? 'да' : 'нет'],
+    ['Создал событий', a.tasks_created],
+    ['Отметок «пришёл»', a.checkins],
+    ['Оценок', a.ratings],
+    ['Запросов в пару', a.requests],
+    ['Завершённых встреч', a.events_completed],
+  ]
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h2>Активность</h2>
+          <button className="icon-btn" onClick={onClose}><Emoji name="close" size={18} /></button>
+        </div>
+        <div className="modal-body">
+          <div className="admin-activity">
+            {rows.map(([k, v]) => (
+              <div key={k} className="admin-activity-row">
+                <span>{k}</span>
+                <b>{v ?? '—'}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
