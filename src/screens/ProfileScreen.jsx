@@ -5,6 +5,7 @@ import { applyTheme, safeSet, savedAccent, savedTheme } from '../lib/theme.js'
 import { Avatar } from '../components/Avatar.jsx'
 import { CropAvatar } from '../components/CropAvatar.jsx'
 import { CoupleSection } from './CoupleScreen.jsx'
+import { MoodMini } from '../components/MoodBar.jsx'
 
 function dataUrlToBlob(dataUrl) {
   const [meta, b64] = dataUrl.split(',')
@@ -86,6 +87,7 @@ export function ProfileScreen() {
       <header className="screen-header">
         <h1>Профиль</h1>
         <p className="screen-sub">Настройки и пара</p>
+        <MoodMini />
       </header>
 
       {/* Profile */}

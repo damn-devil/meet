@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useStore } from '../store.jsx'
 import { Icon } from '../components/Icon.jsx'
 import { Avatar } from '../components/Avatar.jsx'
+import { MoodMini } from '../components/MoodBar.jsx'
 
 const LOCALE = 'ru-RU'
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
@@ -123,6 +124,7 @@ export function StatsScreen() {
             <h1>Статистика</h1>
             <p className="screen-sub">Цифры вашей пары</p>
           </div>
+          <MoodMini />
         </header>
         <div className="empty-state">
           <div className="empty-art"><Icon name="chart" /></div>
@@ -142,6 +144,7 @@ export function StatsScreen() {
           <h1>Статистика</h1>
           <p className="screen-sub">{meName} и {partnerName}</p>
         </div>
+        <MoodMini />
       </header>
 
       <div className="stats-cards">

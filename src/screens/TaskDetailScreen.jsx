@@ -3,6 +3,7 @@ import { useStore } from '../store.jsx'
 import { formatDateTime, statusMeta, avgRating, relativeTime } from '../lib/format.js'
 import { extractMapUrl } from '../lib/map.js'
 import { Avatar } from '../components/Avatar.jsx'
+import { MoodMini } from '../components/MoodBar.jsx'
 
 export function TaskDetailScreen({ taskId }) {
   const { state, actions } = useStore()
@@ -102,6 +103,7 @@ export function TaskDetailScreen({ taskId }) {
         <button className="back-btn" onClick={() => actions.setView('tasks')}>‹</button>
         <span className="status-pill" style={{ background: `${meta.color}1a`, color: meta.color }}>{meta.icon} {meta.label}</span>
         <div className="detail-header-spacer" />
+        <MoodMini />
       </header>
 
       <div className="detail-scroll">

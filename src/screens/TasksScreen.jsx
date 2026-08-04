@@ -3,6 +3,7 @@ import { useStore } from '../store.jsx'
 import { formatDateTime, relativeTime, statusMeta, avgRating } from '../lib/format.js'
 import { hasMapUrl } from '../lib/map.js'
 import { AddTaskModal } from '../components/AddTaskModal.jsx'
+import { MoodMini } from '../components/MoodBar.jsx'
 
 export function TasksScreen() {
   const { state, actions } = useStore()
@@ -39,6 +40,7 @@ export function TasksScreen() {
         {state.couple && (
           <button className="btn btn-primary btn-round" onClick={() => setShowAdd(true)} aria-label="Добавить событие">+</button>
         )}
+        <MoodMini />
       </header>
       <div className="chip-row">
         {filters.map((f) => (

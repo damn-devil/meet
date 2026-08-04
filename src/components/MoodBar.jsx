@@ -1,21 +1,14 @@
 import { useMemo } from 'react'
 import { useStore } from '../store.jsx'
 
-const MOODS = [
-  { label: 'Смерть' },
-  { label: 'Грусть' },
-  { label: 'Обычное' },
-  { label: 'Улыбка' },
-  { label: 'Отличное' },
-]
+const MOODS = ['Смерть', 'Грусть', 'Обычное', 'Улыбка', 'Отличное']
 
 const dayKey = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-export function MoodBar() {
+function useMood() {
   const { state } = useStore()
-
-  const m = useMemo(() => {
+  return useMemo(() => {
     const tasks = state.tasks || []
     const completed = tasks.filter((t) => t.status === 'completed')
     const total = completed.length
@@ -61,24 +54,23 @@ export function MoodBar() {
 
     return { score, level }
   }, [state.tasks])
+}
 
+export function MoodMini() {
+  const m = useMood()
   return (
-    <div className="mood-bar">
-      <div className="mood-face"><FaceSVG level={m.level} /></div>
-      <div className="mood-info">
-        <div className="mood-name">{MOODS[m.level].label}</div>
-        <div className="mood-scale" role="img" aria-label={`Настроение ${MOODS[m.level].label}, уровень ${m.score} из 100`}>
-          {MOODS.map((_, i) => (
-            <span key={i} className={`mood-seg${i <= m.level ? ' on' : ''}`} />
-          ))}
-        </div>
-        <div className="mood-pct">{m.score}%</div>
+    <div className="mood-mini" title={MOODS[m.level]} role="img" aria-label={`Настроение пары: ${MOODS[m.level]}`}>
+      <div className="mood-mini-face"><FaceSVG level={m.level} size={30} /></div>
+      <div className="mood-mini-scale">
+        {MOODS.map((_, i) => (
+          <span key={i} className={`mood-mini-seg${i <= m.level ? ' on' : ''}`} />
+        ))}
       </div>
     </div>
   )
 }
 
-function FaceSVG({ level }) {
+function FaceSVG({ level, size = 30 }) {
   const stroke = {
     fill: 'none',
     stroke: 'currentColor',
@@ -116,7 +108,7 @@ function FaceSVG({ level }) {
     <path key="m4" d="M20 42q12 14 24 0q-5 6-24 0Z" style={{ fill: 'currentColor', stroke: 'currentColor', strokeWidth: 4, strokeLinejoin: 'round' }} />,
   ]
   return (
-    <svg width="54" height="54" viewBox="0 0 64 64" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
       <rect x="7" y="6" width="50" height="52" rx="12" style={{ fill: 'none', stroke: 'currentColor', strokeWidth: 4 }} />
       {eyes[level]}
       {mouth[level]}

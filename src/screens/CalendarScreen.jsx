@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../store.jsx'
 import { Icon } from '../components/Icon.jsx'
+import { MoodMini } from '../components/MoodBar.jsx'
 
 const LOCALE = 'ru-RU'
 
@@ -91,6 +92,7 @@ export function CalendarScreen() {
           <h1>Календарь</h1>
           <p className="screen-sub">Отметьте дни, когда вы свободны</p>
         </div>
+        <MoodMini />
       </header>
 
       <div className="calendar-card glass">
