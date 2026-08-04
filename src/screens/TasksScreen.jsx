@@ -5,6 +5,7 @@ import { hasMapUrl } from '../lib/map.js'
 import { AddTaskModal } from '../components/AddTaskModal.jsx'
 import { MoodMini } from '../components/MoodBar.jsx'
 import { Emoji } from '../components/Emoji.jsx'
+import { Avatar } from '../components/Avatar.jsx'
 
 export function TasksScreen() {
   const { state, actions } = useStore()
@@ -148,12 +149,14 @@ export function TasksScreen() {
 }
 
 function TaskCard({ task, editing, isFirst, isLast, onPin, onMove, onClick, pressHandlers }) {
+  const { state } = useStore()
   const meta = statusMeta(task.status)
   const rating = avgRating(task)
   const partnerCheckins = task.checkins.length
   const isLate = task.scheduled_at && task.scheduled_at < Date.now() && ['planned', 'in_progress'].includes(task.status)
   const pendingAgreement = task.agreements?.find((a) => a.status === 'pending')
   const doneAt = task.status === 'completed' ? task.completed_at || task.scheduled_at : task.scheduled_at
+  const creator = state.couple?.members?.find((m) => m.id === task.created_by)
   return (
     <div
       className={`task-card glass ${isLate ? 'late' : ''} ${editing ? 'editing' : ''}`}
@@ -164,7 +167,9 @@ function TaskCard({ task, editing, isFirst, isLast, onPin, onMove, onClick, pres
       onPointerLeave={pressHandlers?.onPressEnd}
     >
       <div className="task-card-top">
-        <span className="task-icon"><Emoji name="pencil" size={16} /></span>
+        <span className="task-icon">
+          <Avatar url={creator?.avatar_url} emoji={creator?.avatar} size="creator" alt={creator?.name || ''} />
+        </span>
         <div className="task-card-body">
           <h3>
             {task.title}

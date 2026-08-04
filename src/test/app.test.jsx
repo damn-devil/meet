@@ -66,7 +66,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getAllByText('Ужин в кафе')[0])
-    await waitFor(() => expect(screen.getByText('Кто пришёл')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Выполнить/)).toBeInTheDocument())
   })
 
   it('has no map tab', async () => {
@@ -93,7 +93,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => expect(screen.getAllByText('Ужин в кафе').length).toBeGreaterThan(0))
     await userEvent.click(screen.getAllByText('Ужин в кафе')[0])
-    await waitFor(() => expect(screen.getByText('Кто пришёл')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Выполнить/)).toBeInTheDocument())
     expect(screen.queryByText('Комментарии')).not.toBeInTheDocument()
     expect(screen.queryByText(/Не пришёл/)).not.toBeInTheDocument()
     await userEvent.click(screen.getByText('‹'))

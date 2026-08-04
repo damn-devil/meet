@@ -137,13 +137,12 @@ export function TaskDetailScreen({ taskId }) {
 
         {/* Presence */}
         <div className="presence-card glass">
-          <div className="presence-title">Кто пришёл</div>
           <div className="presence-row">
-            <PresenceItem name={me?.name} avatar={me?.avatar} avatarUrl={me?.avatar_url} arrived={!!myCheckin} self />
+            <PresenceItem name={me?.name} avatar={me?.avatar} avatarUrl={me?.avatar_url} arrived={!!myCheckin} />
             <PresenceItem name={partner?.name} avatar={partner?.avatar} avatarUrl={partner?.avatar_url} arrived={!!partnerCheckin} />
           </div>
           {canAct && !myCheckin && (
-            <button className="btn btn-primary btn-block" onClick={checkIn}><Emoji name="check" size={16} /> Я на месте</button>
+            <button className="btn btn-primary btn-block" onClick={checkIn}><Emoji name="check" size={16} /> Выполнить</button>
           )}
           {myCheckin && !partnerCheckin && canAct && (
             <p className="presence-wait">Ожидаем {partner?.name}... Как только оба отметятся — событие закроется само.</p>
@@ -232,13 +231,13 @@ export function TaskDetailScreen({ taskId }) {
   )
 }
 
-function PresenceItem({ name, avatar, avatarUrl, arrived, self }) {
+function PresenceItem({ name, avatar, avatarUrl, arrived }) {
   return (
     <div className={`presence-item ${arrived ? 'arrived' : ''}`}>
       <Avatar url={avatarUrl} emoji={avatar} size="presence" alt={name} />
       <div className="presence-info">
         <span>{name}</span>
-        <small>{arrived ? <><Emoji name="check" size={12} /> На месте</> : self ? 'Вы ещё не пришли' : 'Ещё не пришёл'}</small>
+        <small>{arrived ? <><Emoji name="check" size={12} /> Готов(а)</> : 'Ожидание'}</small>
       </div>
     </div>
   )
