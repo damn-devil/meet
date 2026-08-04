@@ -83,6 +83,7 @@ function TaskCard({ task, onClick }) {
   const partnerCheckins = task.checkins.length
   const isLate = task.scheduled_at && task.scheduled_at < Date.now() && ['planned', 'in_progress'].includes(task.status)
   const pendingAgreement = task.agreements?.find((a) => a.status === 'pending')
+  const doneAt = task.status === 'completed' ? task.completed_at || task.scheduled_at : task.scheduled_at
   return (
     <div className={`task-card glass ${isLate ? 'late' : ''}`} onClick={onClick}>
       <div className="task-card-top">
@@ -99,10 +100,10 @@ function TaskCard({ task, onClick }) {
         </span>
       </div>
       <div className="task-card-bottom">
-        {task.scheduled_at && (
+        {doneAt && (
           <span className="task-time">
-            <Emoji name="clock" size={14} /> {formatDateTime(task.scheduled_at)}
-            <em>{relativeTime(task.scheduled_at)}</em>
+            <Emoji name="clock" size={14} /> {formatDateTime(doneAt)}
+            <em>{relativeTime(doneAt)}</em>
           </span>
         )}
         <span className="task-meta">
