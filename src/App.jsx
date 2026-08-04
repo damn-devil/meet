@@ -31,86 +31,11 @@ function RepaintRipple() {
   return <div key={play} className="repaint-ripple" style={{ background: 'var(--brutal-paper)' }} aria-hidden="true" />
 }
 
-function useCompletionNotifications() {
-  const { state, actions } = useStore()
-  const seen = useRef({})
-  const seenAgreements = useRef({})
-  const seenRatings = useRef({})
-  const seenCheckins = useRef({})
-  const booted = useRef(false)
-  const meId = state.user?.id
-  const partnerName = state.couple?.members?.find((m) => m.id !== meId)?.name || 'Партнёр'
-
-  useEffect(() => {
-    const current = {}
-    const agreements = {}
-    const ratings = {}
-    const checkins = {}
-    const isFirst = !booted.current
-
-    state.tasks.forEach((t) => {
-      current[t.id] = t.status
-      const prev = seen.current[t.id]
-
-      if (!isFirst && prev && prev !== t.status) {
-        if (t.status === 'completed') {
-          actions.toast(`✅ Событие «${t.title}» выполнено!`, 'success')
-        } else if (t.status === 'missed') {
-          actions.toast(`⏰ Событие «${t.title}» пропущено`, 'info')
-        } else if (t.status === 'cancelled') {
-          actions.toast(`🗑 Событие «${t.title}» отменено`, 'info')
-        }
-      }
-
-      if (!isFirst && !prev && t.created_by !== meId) {
-        actions.toast(`📅 Новое событие: «${t.title}»`, 'info')
-      }
-
-      t.ratings?.forEach((r) => {
-        ratings[r.id] = true
-        if (!isFirst && r.user_id !== meId && !seenRatings.current[r.id]) {
-          actions.toast(`⭐ Партнёр оценил «${t.title}»`, 'info')
-        }
-      })
-
-      t.checkins?.forEach((k) => {
-        checkins[k.id] = true
-        if (!isFirst && k.user_id !== meId && !seenCheckins.current[k.id]) {
-          actions.toast(`📍 ${partnerName} на месте: «${t.title}»`, 'info')
-        }
-      })
-
-      t.agreements?.forEach((a) => {
-        agreements[`${t.id}:${a.id}`] = a.status
-        if (!isFirst && a.requested_by !== meId) {
-          const prevA = seenAgreements.current[`${t.id}:${a.id}`]
-          if (a.status === 'pending' && !prevA) {
-            const what = a.type === 'delete' ? 'удалить событие' : 'перенести событие'
-            actions.toast(`💬 ${a.requester_name} предлагает ${what}: «${t.title}»`, 'info')
-          } else if (prevA === 'pending' && a.status === 'approved') {
-            const what = a.type === 'delete' ? 'удалено' : 'перенесено'
-            actions.toast(`✅ Событие «${t.title}» ${what}`, 'success')
-          } else if (prevA === 'pending' && a.status === 'rejected') {
-            actions.toast(`❌ Запрос по «${t.title}» отклонён`, 'info')
-          }
-        }
-      })
-    })
-
-    seen.current = current
-    seenAgreements.current = agreements
-    seenRatings.current = ratings
-    seenCheckins.current = checkins
-    booted.current = true
-  }, [state.tasks, actions, meId, partnerName])
-}
-
 const TAB_IDX = { tasks: 0, calendar: 1, stats: 2, profile: 3 }
 
 function AppInner() {
   const { state } = useStore()
   useThemeInit()
-  useCompletionNotifications()
   const bg = state.bg
 
   const dirRef = useRef(0)

@@ -6,6 +6,29 @@ export async function getToken() {
   return data.session?.access_token || null
 }
 
+// Запрос к Edge Function (пуш-уведомления). Вызывается «в фоне» — после действия
+// партнёру шлётся самое свежее непросмотренное уведомление из БД.
+export async function sendPush(type, taskId, toUserId) {
+  try {
+    const client = supabaseReady()
+    const token = await getToken()
+    if (!token) return null
+    const res = await fetch(`${client.supabaseUrl}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ type, task_id: taskId || null, to_user_id: toUserId || null }),
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      if (res.status === 404) return null // функция не задеплоена — не критично
+      if (import.meta.env.DEV) console.warn('send-push:', res.status, text.slice(0, 200))
+    }
+    return res
+  } catch {
+    return null
+  }
+}
+
 export async function hasSession() {
   if (!supabase) return false
   const { data } = await supabase.auth.getSession()
@@ -190,6 +213,12 @@ export const api = {
   stats: () => rpc('get_stats'),
   freeDays: () => rpc('get_free_days'),
   setFreeDay: (day, free) => rpc('set_free_day', { p_day: day, p_free: free }),
+  getUnseenNotifications: () => rpc('get_unseen_notifications'),
+  markNotificationsSeen: () => rpc('mark_notifications_seen'),
+  savePushSubscription: (endpoint, keys) =>
+    rpc('save_push_subscription', { p_endpoint: endpoint, p_keys: keys }),
+  removePushSubscription: (endpoint) =>
+    rpc('remove_push_subscription', { p_endpoint: endpoint }),
   adminUsers: () => rpc('admin_get_users'),
   adminActivity: (userId) => rpc('admin_get_activity', { p_user_id: userId }),
   adminDeleteUser: (userId) => rpc('admin_delete_user', { p_user_id: userId }),
@@ -199,6 +228,7 @@ export const api = {
 let channel = null
 let requestsChannel = null
 let freeDaysChannel = null
+let notificationsChannel = null
 
 async function fetchTask(id) {
   try {
@@ -279,4 +309,28 @@ export function subscribeFreeDays(coupleId, onEvent) {
 export function unsubscribeFreeDays() {
   if (freeDaysChannel) supabase?.removeChannel(freeDaysChannel)
   freeDaysChannel = null
+}
+
+// Уведомления в реальном времени: тост приходит сразу, как только партнёр
+// что-то сделал. Фильтр по user_id — доставляются только свои уведомления.
+export function subscribeNotifications(onEvent) {
+  if (!supabase) return null
+  unsubscribeNotifications()
+  notificationsChannel = supabase
+    .channel('my-notifications')
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'notifications' },
+      async (payload) => {
+        const { data } = await supabase.auth.getSession()
+        if (payload.new?.user_id === data.session?.user?.id) onEvent(payload.new)
+      }
+    )
+    .subscribe()
+  return notificationsChannel
+}
+
+export function unsubscribeNotifications() {
+  if (notificationsChannel) supabase?.removeChannel(notificationsChannel)
+  notificationsChannel = null
 }

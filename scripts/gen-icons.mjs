@@ -1,6 +1,7 @@
-// Генерирует PWA-иконки (PNG) без внешних зависимостей:
-// iOS-style «квадрат со скруглением», вертикальный градиент,
-// белое сердце с лёгкой тенью и маленькое розовое сердце рядом (пара).
+// Генерирует PWA-иконки (PNG) без внешних зависимостей.
+// Брутал-кнопка на всю плитку: тёмный не-чёрный тёплый фон, толстая кнопка
+// в брутал-стиле (карточка + чернильная рамка + жёсткая тень), внутри —
+// календарь с шапкой и сердечками вместо дней (глина — как акцент пары).
 import { deflateSync } from 'node:zlib'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -55,6 +56,10 @@ function roundRectSDF(x, y, cx, cy, hw, hh, r) {
   return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r
 }
 
+function inRoundedRect(px, py, cx, cy, hw, hh, r) {
+  return roundRectSDF(px, py, cx, cy, hw, hh, r) <= 0
+}
+
 // Сердце (неявная кривая), y направлена вниз
 function heart(x, y) {
   const x2 = x * x
@@ -72,65 +77,100 @@ function heartAt(px, py, cx, cy, s, angle) {
   return heart(x, y)
 }
 
-function hexToRgb(hex) {
-  const v = parseInt(hex.slice(1), 16)
-  return [(v >> 16) & 255, (v >> 8) & 255, v & 255]
-}
+// ---------- Палитра ----------
+const BG = [23, 19, 16]        // тёмный тёплый, не чёрный
+const PAPER = [247, 242, 229]  // брутал-карточка
+const INK = [27, 27, 27]       // брутал-чернила
+const ACCENT = [155, 84, 46]   // глина (акцент)
+const SHADOW = [7, 5, 4]       // жёсткая тень
 
 function render(size) {
   const out = Buffer.alloc(size * size * 4)
-  const pad = size * 0.06
-  const hw = size / 2 - pad
-  const r = size * 0.22
-  const cx = size / 2
-  const heartS = size * 0.30
-  const heartCy = size / 2 - 0.25 * heartS
-  const smallS = size * 0.16
-  const smallX = cx + 0.60 * heartS
-  const smallY = heartCy - 0.38 * heartS
-  const shadowX = cx + 0.025 * size
-  const shadowY = heartCy + 0.04 * size
+  const S = size
 
-  const top = hexToRgb('#8b5cf6')
-  const bot = hexToRgb('#ec4899')
-  const shadow = [64, 6, 44, 0.30]
-  const small = hexToRgb('#ff6b9d')
+  // Кнопка на всю плитку
+  const m = S * 0.055
+  const hw = S / 2 - m
+  const r = S * 0.05
+  const cx = S / 2
+  const cy = S / 2 + S * 0.01
+  const borderT = S * 0.024
+  const shx = S * 0.028
+  const shy = S * 0.042
+
+  // Календарь внутри кнопки
+  const calW = S * 0.5
+  const headerH = S * 0.11
+  const calCX = S / 2
+  const calCY = S / 2 + S * 0.01
+  const calTop = calCY - calW / 2 - headerH / 2
+  const headerCX = calTop + headerH / 2
+  const bodyTop = calTop + headerH
+  const cellW = calW / 4
+  const hs = cellW * 0.4
+  const headHeartS = S * 0.06
+  const ringR = S * 0.016
 
   const SS = 3
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
       let rA = 0, gA = 0, bA = 0, aA = 0
       for (let sy = 0; sy < SS; sy++) {
         for (let sx = 0; sx < SS; sx++) {
           const px = x + (sx + 0.5) / SS
           const py = y + (sy + 0.5) / SS
-          if (roundRectSDF(px, py, cx, cx, hw, hw, r) > 0) continue
-          const t = (py - pad) / (size - 2 * pad)
-          let cr = top[0] + (bot[0] - top[0]) * t
-          let cg = top[1] + (bot[1] - top[1]) * t
-          let cb = top[2] + (bot[2] - top[2]) * t
-          let ca = 1
-          if (heartAt(px, py, shadowX, shadowY, heartS, 0)) {
-            cr = shadow[0]; cg = shadow[1]; cb = shadow[2]; ca = shadow[3]
+          let cr = BG[0], cg = BG[1], cb = BG[2]
+
+          if (inRoundedRect(px, py, cx + shx, cy + shy, hw, hw, r)) {
+            cr = SHADOW[0]; cg = SHADOW[1]; cb = SHADOW[2]
           }
-          if (heartAt(px, py, cx, heartCy, heartS, 0)) {
-            cr = 255; cg = 255; cb = 255; ca = 1
+          if (inRoundedRect(px, py, cx, cy, hw, hw, r)) {
+            cr = INK[0]; cg = INK[1]; cb = INK[2]
           }
-          if (heartAt(px, py, smallX, smallY, smallS, 0.4)) {
-            cr = small[0]; cg = small[1]; cb = small[2]; ca = 1
+          if (inRoundedRect(px, py, cx, cy, hw - borderT, hw - borderT, r - borderT)) {
+            cr = PAPER[0]; cg = PAPER[1]; cb = PAPER[2]
           }
-          rA += cr; gA += cg; bA += cb; aA += ca * 255
+
+          // шапка календаря (чернильная) + сердце в центре
+          if (inRoundedRect(px, py, calCX, headerCX, calW / 2, headerH / 2, S * 0.016)) {
+            cr = INK[0]; cg = INK[1]; cb = INK[2]
+          }
+          if (heartAt(px, py, calCX, headerCX, headHeartS, 0)) {
+            cr = PAPER[0]; cg = PAPER[1]; cb = PAPER[2]
+          }
+
+          // кольца-переплёт сверху (чернила на карточке)
+          for (const rx of [calCX - calW * 0.3, calCX + calW * 0.3]) {
+            if (Math.hypot(px - rx, py - (calTop - ringR)) <= ringR) {
+              cr = INK[0]; cg = INK[1]; cb = INK[2]
+            }
+          }
+
+          // сетка сердец вместо дней
+          for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 4; col++) {
+              if (heartAt(px, py, calCX - calW / 2 + cellW * (col + 0.5), bodyTop + cellW * (row + 0.5), hs, 0)) {
+                if ((row === 0 && col === 0) || (row === 3 && col === 3)) {
+                  cr = ACCENT[0]; cg = ACCENT[1]; cb = ACCENT[2]
+                } else {
+                  cr = INK[0]; cg = INK[1]; cb = INK[2]
+                }
+              }
+            }
+          }
+
+          rA += cr; gA += cg; bA += cb; aA += 255
         }
       }
       const n = SS * SS
-      const i = (y * size + x) * 4
+      const i = (y * S + x) * 4
       out[i] = Math.round(rA / n)
       out[i + 1] = Math.round(gA / n)
       out[i + 2] = Math.round(bA / n)
       out[i + 3] = Math.round(aA / n)
     }
   }
-  return encodePNG(size, size, out)
+  return encodePNG(S, S, out)
 }
 
 mkdirSync(ROOT, { recursive: true })

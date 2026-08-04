@@ -1,0 +1,131 @@
+// Отправка пуш-уведомления партнёру.
+//
+// Клиент зовёт эту функцию «в фоне» после действия (создано событие, отметка
+// «на месте», оценка, запрос на перенос и т.п.). Функция берёт из БД самое
+// свежее непросмотренное уведомление получателя и отправляет его по всем его
+// подпискам браузера (Web Push). Уведомления создаёт сама БД (таблица
+// notifications) — здесь мы их только доставляем, поэтому повторов нет.
+//
+// Переменные окружения функции:
+//   VAPID_PUBLIC_KEY   — публичный ключ VAPID (base64url)
+//   VAPID_PRIVATE_KEY  — приватный ключ VAPID (base64url)
+//   VAPID_SUBJECT      — mailto: контакт (необязательно, по умолчанию задан ниже)
+// SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY подставляются платформой сами.
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+import webpush from 'npm:web-push@3.6.7'
+import { createClient } from 'npm:@supabase/supabase-js@2.111.0'
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+const vapidPublic = Deno.env.get('VAPID_PUBLIC_KEY') || ''
+const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY') || ''
+const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:plans@example.com'
+
+const admin = createClient(supabaseUrl, serviceKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+})
+
+webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
+
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+function json(data, status) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...CORS },
+  })
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  if (req.method !== 'POST') return json({ error: 'Метод не поддерживается' }, 405)
+
+  try {
+    const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
+    if (!token) return json({ error: 'Нет авторизации' }, 401)
+    if (!vapidPublic || !vapidPrivate) return json({ error: 'VAPID не настроен' }, 500)
+
+    const { data: me, error: authError } = await admin.auth.getUser(token)
+    if (authError || !me?.user) return json({ error: 'Сессия недействительна' }, 401)
+
+    let body = {}
+    try {
+      body = await req.json()
+    } catch {}
+    const type = String(body.type || '')
+    const taskId = body.task_id ? String(body.task_id) : null
+    const toUserId = body.to_user_id ? String(body.to_user_id) : null
+
+    // Получатель: явный user_id (запросы на пару) либо партнёр по паре.
+    let recipientId = toUserId
+    if (!recipientId) {
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('couple_id')
+        .eq('id', me.user.id)
+        .maybeSingle()
+      if (profile?.couple_id) {
+        const { data: members } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('couple_id', profile.couple_id)
+        recipientId = members?.find((m) => m.id !== me.user.id)?.id || null
+      }
+    }
+    if (!recipientId) return json({ ok: true, pushed: 0 })
+
+    // Самое свежее непросмотренное уведомление получателя (с фильтром по типу/задаче).
+    let query = admin
+      .from('notifications')
+      .select('*')
+      .eq('user_id', recipientId)
+      .is('seen_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    if (type) query = query.eq('type', type)
+    if (taskId) query = query.eq('task_id', taskId)
+    const { data: notif } = await query.maybeSingle()
+    if (!notif) return json({ ok: true, pushed: 0 })
+
+    const { data: subs } = await admin
+      .from('push_subscriptions')
+      .select('endpoint, keys')
+      .eq('user_id', recipientId)
+    if (!subs?.length) return json({ ok: true, pushed: 0 })
+
+    const payload = JSON.stringify({
+      title: 'Universe of Plans',
+      body: notif.message,
+      url: '.',
+      data: { type: notif.type, task_id: notif.task_id, notification_id: notif.id },
+    })
+
+    let pushed = 0
+    await Promise.all(
+      subs.map(async (sub) => {
+        try {
+          const keys = sub.keys || {}
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } },
+            payload,
+            { TTL: 86400, urgency: 'high' }
+          )
+          pushed++
+        } catch {
+          // Подписка протухла или отклонена — убираем её.
+          try {
+            await admin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+          } catch {}
+        }
+      })
+    )
+
+    return json({ ok: true, pushed })
+  } catch (err) {
+    return json({ error: String(err?.message || err) }, 500)
+  }
+})

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store.jsx'
 import { THEMES } from '../lib/theme.js'
 import { applyTheme, safeSet, savedAccent, savedTheme, SOFT_ACCENTS, accentValue } from '../lib/theme.js'
@@ -9,6 +9,7 @@ import { MoodMini } from '../components/MoodBar.jsx'
 import { Emoji, avatarName } from '../components/Emoji.jsx'
 import { Loader } from '../components/Loader.jsx'
 import { HelpModal, AboutModal, PrivacyModal } from './SettingsInfo.jsx'
+import { pushSupported, getPushStatus, enablePush, disablePush } from '../lib/push.js'
 
 function dataUrlToBlob(dataUrl) {
   const [meta, b64] = dataUrl.split(',')
@@ -265,6 +266,57 @@ export function ProfileScreen() {
   )
 }
 
+function PushToggle() {
+  const { actions } = useStore()
+  const [status, setStatus] = useState({ supported: pushSupported(), permission: 'unsupported', subscribed: false, enabled: false })
+  const [busy, setBusy] = useState(false)
+
+  const refresh = () => getPushStatus().then(setStatus).catch(() => {})
+  useEffect(() => { refresh() }, [])
+
+  if (!status.supported) return null
+
+  const turnOn = async () => {
+    setBusy(true)
+    const res = await enablePush().catch((e) => ({ ok: false, error: e?.message || 'Не удалось включить' }))
+    setBusy(false)
+    if (!res.ok) {
+      actions.toast(res.error || 'Не удалось включить уведомления', 'error')
+    } else {
+      actions.toast('Пуш-уведомления включены', 'success')
+    }
+    await refresh()
+  }
+
+  const turnOff = async () => {
+    setBusy(true)
+    await disablePush().catch(() => {})
+    setBusy(false)
+    actions.toast('Пуш-уведомления выключены')
+    await refresh()
+  }
+
+  return (
+    <div className="setting-group">
+      <span className="setting-label">Пуш-уведомления</span>
+      <p className="bg-hint">
+        {status.permission === 'denied'
+          ? 'Браузер заблокировал уведомления — разрешите их в настройках браузера.'
+          : 'Приходят, даже когда приложение закрыто: партнёр добавил событие, пришёл, оценил и т.п.'}
+      </p>
+      {status.enabled ? (
+        <button className="btn btn-danger-soft btn-block" disabled={busy} onClick={turnOff}>
+          {busy ? <span className="btn-busy"><Loader size={16} /> …</span> : 'Выключить уведомления'}
+        </button>
+      ) : (
+        <button className="btn btn-primary btn-block" disabled={busy} onClick={turnOn}>
+          {busy ? <span className="btn-busy"><Loader size={16} /> …</span> : 'Включить уведомления'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 function SettingsPanel() {
   const { state, actions } = useStore()
 
@@ -370,6 +422,8 @@ function SettingsPanel() {
           )}
         </div>
       </div>
+
+      <PushToggle />
 
       <div className="setting-group">
         <span className="setting-label">Сервис</span>

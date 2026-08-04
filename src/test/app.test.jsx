@@ -16,12 +16,17 @@ vi.mock('../api.js', () => ({
   unsubscribeRequests: vi.fn(),
   subscribeFreeDays: () => ({ subscribe: vi.fn() }),
   unsubscribeFreeDays: vi.fn(),
+  subscribeNotifications: () => ({ subscribe: vi.fn() }),
+  unsubscribeNotifications: vi.fn(),
+  sendPush: vi.fn(() => Promise.resolve({ ok: true })),
   api: {
     me: vi.fn(),
     tasks: vi.fn(),
     stats: vi.fn(),
     myRequests: vi.fn(),
     freeDays: vi.fn(() => Promise.resolve([])),
+    getUnseenNotifications: vi.fn(() => Promise.resolve(null)),
+    markNotificationsSeen: vi.fn(() => Promise.resolve()),
   },
 }))
 

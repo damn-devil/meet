@@ -325,13 +325,29 @@ $$;
 -- задача в planned/in_progress, просроченная более чем на 2 часа, помечается missed.
 create or replace function public.sweep_missed()
 returns void
-language sql security definer set search_path = public
+language plpgsql security definer set search_path = public
 as $$
-  update public.tasks t
-  set status = 'missed', updated_at = now()
-  where t.status in ('planned','in_progress')
-    and t.scheduled_at is not null
-    and t.scheduled_at + interval '2 hours' < now()
+declare
+  r record;
+begin
+  for r in
+    update public.tasks t
+    set status = 'missed', updated_at = now()
+    where t.status in ('planned','in_progress')
+      and t.scheduled_at is not null
+      and t.scheduled_at + interval '2 hours' < now()
+    returning t.id, t.title, t.created_by, t.couple_id
+  loop
+    -- уведомляем создателя (cron вызывает без auth.uid(), поэтому is distinct from)
+    if r.created_by is distinct from auth.uid() then
+      perform public.notify_user(
+        r.created_by, r.couple_id, 'task_missed', r.id,
+        r.title, format('⏰ Событие «%s» пропущено', r.title),
+        jsonb_build_object('task_id', r.id)
+      );
+    end if;
+  end loop;
+end
 $$;
 
 create or replace function public.get_me()
@@ -615,6 +631,11 @@ begin
   insert into public.tasks (couple_id, title, description, scheduled_at, created_by)
   values (v_couple_id, btrim(p_title), coalesce(p_description,''), p_scheduled_at, auth.uid())
   returning * into v_task;
+  perform public.notify_partner(
+    v_couple_id, auth.uid(), 'task_created', v_task.id,
+    v_task.title, format('📅 Новое событие: «%s»', v_task.title),
+    jsonb_build_object('task_id', v_task.id)
+  );
   return public.task_view(v_task.id);
 end
 $$;
@@ -763,9 +784,19 @@ begin
   if v_exists > 0 then
     v_status := 'completed';
     update public.tasks set status = 'completed', completed_at = now(), updated_at = now() where id = p_task_id;
+    perform public.notify_user(
+      v_partner, v_couple_id, 'task_completed', p_task_id, v_task.title,
+      format('✅ Событие «%s» выполнено!', v_task.title),
+      jsonb_build_object('task_id', p_task_id)
+    );
   else
     v_status := 'in_progress';
     update public.tasks set status = 'in_progress', updated_at = now() where id = p_task_id;
+    perform public.notify_user(
+      v_partner, v_couple_id, 'checkin', p_task_id, v_task.title,
+      format('📍 %s на месте: «%s»', (select p2.name from public.profiles p2 where p2.id = auth.uid()), v_task.title),
+      jsonb_build_object('task_id', p_task_id, 'user_id', auth.uid())
+    );
   end if;
 
   return jsonb_build_object(
@@ -810,6 +841,16 @@ begin
     auth.uid()
   );
   update public.tasks set updated_at = now() where id = p_task_id;
+  perform public.notify_partner(
+    v_couple_id, auth.uid(), 'agreement', p_task_id, v_task.title,
+    format('💬 %s предлагает %s: «%s»',
+      (select p2.name from public.profiles p2 where p2.id = auth.uid()),
+      case when p_type = 'delete' then 'удалить событие'
+           when p_type = 'reschedule' then 'перенести событие'
+           else 'изменить событие' end,
+      v_task.title),
+    jsonb_build_object('task_id', p_task_id)
+  );
   return public.task_view(p_task_id);
 end
 $$;
@@ -858,6 +899,16 @@ begin
   end if;
 
   update public.tasks set updated_at = now() where id = v_task.id;
+  perform public.notify_user(
+    v_agreement.requested_by, v_task.couple_id, 'agreement_decision', v_task.id, v_task.title,
+    case
+      when p_approve and v_agreement.type = 'delete' then format('✅ Событие «%s» удалено', v_task.title)
+      when p_approve and v_agreement.type = 'reschedule' then format('✅ Событие «%s» перенесено', v_task.title)
+      when p_approve then format('✅ Изменения по «%s» приняты', v_task.title)
+      else format('❌ Запрос по «%s» отклонён', v_task.title)
+    end,
+    jsonb_build_object('task_id', v_task.id, 'approved', p_approve, 'type', v_agreement.type)
+  );
   return public.task_view(v_task.id);
 end
 $$;
@@ -896,6 +947,11 @@ begin
   on conflict (task_id, user_id) do update
     set score = excluded.score, comment = excluded.comment;
   update public.tasks set updated_at = now() where id = p_task_id;
+  perform public.notify_partner(
+    v_couple_id, auth.uid(), 'rating', p_task_id, v_task.title,
+    format('⭐ %s оценил «%s»', (select p2.name from public.profiles p2 where p2.id = auth.uid()), v_task.title),
+    jsonb_build_object('task_id', p_task_id, 'score', p_score)
+  );
   return public.task_view(p_task_id);
 end
 $$;
@@ -1020,6 +1076,12 @@ begin
     -- гонка: параллельный запрос уже вставлен — отвечаем понятной ошибкой
     raise exception 'Запрос уже отправлен';
   end;
+  perform public.notify_user(
+    p_to_id, null, 'couple_request', null,
+    (select p.name from public.profiles p where p.id = auth.uid()),
+    format('💌 %s хочет быть в паре с вами', (select p.name from public.profiles p where p.id = auth.uid())),
+    jsonb_build_object('from_id', auth.uid())
+  );
   return public.request_view(v_new.id);
 end
 $$;
@@ -1057,9 +1119,21 @@ begin
     update public.couple_requests set status = 'accepted', responded_at = now() where id = p_request_id;
     update public.couple_requests set status = 'declined', responded_at = now()
     where status = 'pending' and (from_id in (v_req.from_id, v_req.to_id) or to_id in (v_req.from_id, v_req.to_id));
+    perform public.notify_user(
+      v_req.from_id, v_couple, 'couple_request_response', null,
+      (select p.name from public.profiles p where p.id = auth.uid()),
+      format('💚 %s принял(а) запрос — вы в паре!', (select p.name from public.profiles p where p.id = auth.uid())),
+      jsonb_build_object('request_id', p_request_id)
+    );
     return jsonb_build_object('couple', public.couple_view(v_couple));
   else
     update public.couple_requests set status = 'declined', responded_at = now() where id = p_request_id;
+    perform public.notify_user(
+      v_req.from_id, null, 'couple_request_response', null,
+      (select p.name from public.profiles p where p.id = auth.uid()),
+      format('💔 %s отклонил(а) ваш запрос', (select p.name from public.profiles p where p.id = auth.uid())),
+      jsonb_build_object('request_id', p_request_id)
+    );
     return jsonb_build_object('couple', null);
   end if;
 end
@@ -1148,6 +1222,9 @@ begin
   end if;
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'couple_requests') then
     alter publication supabase_realtime add table public.couple_requests;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications') then
+    alter publication supabase_realtime add table public.notifications;
   end if;
 end
 $$;
@@ -1254,6 +1331,153 @@ begin
   end if;
 end
 $$;
+
+-- ============================================================
+-- Уведомления и Web Push
+-- ============================================================
+
+-- Уведомления: единственный источник того, что нужно показать партнёру.
+-- Каждое событие создаёт ровно одну запись — так не бывает повторов
+-- «одно и то же». Клиент показывает их (тост/пуш) и помечает seen_at.
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  couple_id uuid references public.couples(id) on delete cascade,
+  type text not null,
+  task_id uuid references public.tasks(id) on delete cascade,
+  title text not null,
+  message text not null,
+  data jsonb not null default '{}'::jsonb,
+  seen_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_notifications_user
+  on public.notifications (user_id, created_at desc);
+
+-- Web Push подписки браузера (endpoint + ключи шифрования сообщений)
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  endpoint text not null unique,
+  keys jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+-- Хелпер: уведомление для конкретного пользователя
+create or replace function public.notify_user(
+  p_user_id uuid, p_couple_id uuid, p_type text,
+  p_task_id uuid, p_title text, p_message text, p_data jsonb default '{}'::jsonb
+)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  insert into public.notifications (user_id, couple_id, type, task_id, title, message, data)
+  values (p_user_id, p_couple_id, p_type, p_task_id, p_title, p_message, p_data);
+end
+$$;
+
+-- Хелпер: уведомление для партнёра по паре
+create or replace function public.notify_partner(
+  p_couple_id uuid, p_me uuid, p_type text,
+  p_task_id uuid, p_title text, p_message text, p_data jsonb default '{}'::jsonb
+)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_partner uuid;
+begin
+  select id into v_partner from public.profiles
+  where couple_id = p_couple_id and id <> p_me
+  limit 1;
+  if v_partner is not null then
+    perform public.notify_user(v_partner, p_couple_id, p_type, p_task_id, p_title, p_message, p_data);
+  end if;
+end
+$$;
+
+-- Получить последнее непросмотренное уведомление (только самое свежее —
+-- не «одно и то же» каждый раз) и пометить все свои непрочитанные как seen.
+create or replace function public.get_unseen_notifications()
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_row jsonb;
+begin
+  select to_jsonb(n) into v_row
+  from public.notifications n
+  where n.user_id = v_user and n.seen_at is null
+  order by n.created_at desc, n.id desc
+  limit 1;
+  update public.notifications set seen_at = now()
+  where user_id = v_user and seen_at is null;
+  return coalesce(v_row, 'null'::jsonb);
+end
+$$;
+
+-- Отметить уведомления прочитанными (после показа тоста в реальном времени)
+create or replace function public.mark_notifications_seen()
+returns void
+language sql security definer set search_path = public
+as $$
+  update public.notifications set seen_at = now()
+  where user_id = auth.uid() and seen_at is null
+$$;
+
+-- Сохранение подписки браузера для пушей
+create or replace function public.save_push_subscription(p_endpoint text, p_keys jsonb)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if p_endpoint is null or btrim(p_endpoint) = '' then return; end if;
+  insert into public.push_subscriptions (user_id, endpoint, keys)
+  values (auth.uid(), p_endpoint, coalesce(p_keys, '{}'::jsonb))
+  on conflict (endpoint) do update
+    set keys = excluded.keys, user_id = auth.uid();
+end
+$$;
+
+-- Удаление подписки браузера (пользователь выключил уведомления)
+create or replace function public.remove_push_subscription(p_endpoint text)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  delete from public.push_subscriptions where user_id = auth.uid() and endpoint = p_endpoint;
+end
+$$;
+
+alter table public.notifications enable row level security;
+alter table public.push_subscriptions enable row level security;
+
+drop policy if exists "notifications_select" on public.notifications;
+create policy "notifications_select" on public.notifications
+  for select to authenticated using (user_id = auth.uid());
+
+drop policy if exists "push_subs_select" on public.push_subscriptions;
+create policy "push_subs_select" on public.push_subscriptions
+  for select to authenticated using (user_id = auth.uid());
+
+drop policy if exists "push_subs_insert" on public.push_subscriptions;
+create policy "push_subs_insert" on public.push_subscriptions
+  for insert to authenticated with check (user_id = auth.uid());
+
+drop policy if exists "push_subs_delete" on public.push_subscriptions;
+create policy "push_subs_delete" on public.push_subscriptions
+  for delete to authenticated using (user_id = auth.uid());
+
+-- Права для новых объектов добавляются здесь: блок «Права» выше выполняется
+-- до создания этих таблиц/функций, поэтому grants задаём явно.
+grant select on public.notifications to authenticated;
+grant execute on function public.get_unseen_notifications() to authenticated;
+grant execute on function public.mark_notifications_seen() to authenticated;
+grant execute on function public.save_push_subscription(text, jsonb) to authenticated;
+grant execute on function public.remove_push_subscription(text) to authenticated;
 
 -- ============================================================
 -- Админ-панель (доступ только для is_admin=true, см. комментарий выше)

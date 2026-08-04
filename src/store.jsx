@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useReducer, useRef } from 'react'
 import {
   api, subscribeTasks, unsubscribeTasks, subscribeRequests, unsubscribeRequests,
   subscribeFreeDays, unsubscribeFreeDays,
+  subscribeNotifications, unsubscribeNotifications, sendPush,
   hasSession, clearToken,
   isRecoverySession, clearRecoverySession,
 } from './api.js'
@@ -84,6 +85,14 @@ function showToast(dispatch, msg, type = 'info') {
   toastTimer = setTimeout(() => dispatch({ type: 'TOAST', toast: null }), 3500)
 }
 
+// Тип тоста для уведомления из БД: успех — для «выполнено/принято», остальное — info.
+function notificationToastType(n) {
+  if (n.type === 'task_completed') return 'success'
+  if (n.type === 'agreement_decision' && n.data?.approved) return 'success'
+  if (n.type === 'couple_request_response' && n.data?.approved) return 'success'
+  return 'info'
+}
+
 export function StoreProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
   const coupleIdRef = useRef(null)
@@ -160,15 +169,32 @@ export function StoreProvider({ children }) {
       const me = stateRef.current.user?.id
       if (!me) return
       const row = payload.new || {}
-      if (payload.eventType === 'INSERT' && row.to_id === me && row.status === 'pending') {
-        loadRequests()
-        showToast(dispatch, 'Вам отправили запрос на пару — посмотрите в разделе «Пара»', 'info')
-      } else if (row.status === 'accepted') {
+      if (row.status === 'accepted') {
         refreshAfterCouple()
       } else {
         loadRequests()
       }
     })
+  }
+
+  // Живые уведомления (тост сразу, как партнёр что-то сделал).
+  const connectNotifications = () => {
+    if (!stateRef.current.user?.id) return
+    subscribeNotifications((n) => {
+      showToast(dispatch, n.message, notificationToastType(n))
+      api.markNotificationsSeen().catch(() => {})
+    })
+  }
+
+  // При старте показываем только самое свежее непросмотренное уведомление
+  // (старые уже помечаются прочитанными на сервере — повторно не приходят).
+  const catchUpNotifications = async () => {
+    try {
+      const row = await api.getUnseenNotifications()
+      if (row && typeof row === 'object' && row.id) {
+        showToast(dispatch, row.message, notificationToastType(row))
+      }
+    } catch {}
   }
 
   useEffect(() => {
@@ -194,6 +220,8 @@ export function StoreProvider({ children }) {
         await loadAll(data.couple?.id)
         await loadRequests()
         connectRequests()
+        connectNotifications()
+        await catchUpNotifications()
       } catch (e) {
         if (cancelled) return
         if (e.code === 'PGRST301' || /jwt|token|auth/i.test(e.message || '')) {
@@ -209,6 +237,7 @@ export function StoreProvider({ children }) {
       cancelled = true
       unsubscribeTasks()
       unsubscribeRequests()
+      unsubscribeNotifications()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -221,6 +250,8 @@ export function StoreProvider({ children }) {
       await loadAll(data.couple?.id)
       await loadRequests()
       connectRequests()
+      connectNotifications()
+      await catchUpNotifications()
       return data
     },
     resetPassword: async (email) => {
@@ -244,6 +275,8 @@ export function StoreProvider({ children }) {
       await loadAll(data.couple?.id)
       await loadRequests()
       connectRequests()
+      connectNotifications()
+      await catchUpNotifications()
       return data
     },
     logout: async () => {
@@ -252,6 +285,7 @@ export function StoreProvider({ children }) {
       } catch {}
       unsubscribeTasks()
       unsubscribeRequests()
+      unsubscribeNotifications()
       unsubscribeFreeDays()
       coupleIdRef.current = null
       dispatch({ type: 'LOGOUT' })
@@ -264,6 +298,7 @@ export function StoreProvider({ children }) {
       } catch {}
       unsubscribeTasks()
       unsubscribeRequests()
+      unsubscribeNotifications()
       unsubscribeFreeDays()
       coupleIdRef.current = null
       dispatch({ type: 'LOGOUT' })
@@ -297,9 +332,11 @@ export function StoreProvider({ children }) {
       const req = await api.sendCoupleRequest(toId)
       await loadRequests()
       showToast(dispatch, 'Запрос отправлен — ждём ответа', 'success')
+      sendPush('couple_request', null, toId)
       return req
     },
     respondRequest: async (id, approve) => {
+      const req = stateRef.current.requests?.find((r) => r.id === id)
       const res = await api.respondCoupleRequest(id, approve)
       if (approve && res?.couple) {
         dispatch({ type: 'SET_COUPLE', couple: res.couple })
@@ -309,6 +346,7 @@ export function StoreProvider({ children }) {
       } else {
         await loadRequests()
       }
+      sendPush('couple_request_response', null, req?.from_id || null)
       return res
     },
     cancelRequest: async (id) => {
@@ -330,6 +368,7 @@ export function StoreProvider({ children }) {
     createTask: async (body) => {
       const task = await api.createTask(body)
       dispatch({ type: 'UPSERT_TASK', task })
+      sendPush('task_created', task.id)
       return task
     },
     setPin: async (id, pinned) => {
@@ -349,17 +388,24 @@ export function StoreProvider({ children }) {
     checkin: async (id) => {
       const data = await api.checkin(id)
       dispatch({ type: 'UPSERT_TASK', task: data.task })
-      if (data.success) showToast(dispatch, 'Вы встретились! План выполнен', 'success')
+      if (data.success) {
+        showToast(dispatch, 'Вы встретились! План выполнен', 'success')
+        sendPush('task_completed', id)
+      } else {
+        sendPush('checkin', id)
+      }
       return data
     },
     requestAgreement: async (id, type, scheduled_at, title, description) => {
       const data = await api.requestAgreement(id, type, scheduled_at, title, description)
       dispatch({ type: 'UPSERT_TASK', task: data.task || data })
+      sendPush('agreement', id)
       return data
     },
     respondAgreement: async (id, approve) => {
       const data = await api.respondAgreement(id, approve)
       dispatch({ type: 'UPSERT_TASK', task: data.task || data })
+      sendPush('agreement_decision', null)
       return data
     },
     cancelAgreement: async (id) => {
@@ -370,6 +416,7 @@ export function StoreProvider({ children }) {
     rate: async (id, score, comment) => {
       const task = await api.rate(id, score, comment)
       dispatch({ type: 'UPSERT_TASK', task })
+      sendPush('rating', id)
     },
     toast: (msg, type) => showToast(dispatch, msg, type),
     flash: () => dispatch({ type: 'FLASH' }),

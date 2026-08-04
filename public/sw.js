@@ -1,4 +1,4 @@
-const CACHE = 'together-v1'
+const CACHE = 'together-v2'
 const SCOPE = (self.registration && self.registration.scope) || self.location.origin + '/'
 
 function scopeUrl(path) {
@@ -61,4 +61,38 @@ self.addEventListener('fetch', (e) => {
 
 self.addEventListener('message', (e) => {
   if (e.data === 'SKIP_WAITING') self.skipWaiting()
+})
+
+// Пуш-уведомления: приходят даже когда приложение закрыто.
+// Payload (JSON): { title, body, url }
+self.addEventListener('push', (e) => {
+  let data = {}
+  try {
+    if (e.data) data = e.data.json()
+  } catch {}
+
+  const title = data.title || 'Universe of Plans'
+  const options = {
+    body: data.body || '',
+    icon: scopeUrl('icons/icon-192.png'),
+    badge: scopeUrl('icons/icon-192.png'),
+    data: { url: data.url ? scopeUrl(data.url) : scopeUrl('.') },
+  }
+  e.waitUntil(self.registration.showNotification(title, options))
+})
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close()
+  const target = (e.notification.data && e.notification.data.url) || scopeUrl('.')
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ('focus' in client) {
+          client.navigate(target).catch(() => {})
+          return client.focus()
+        }
+      }
+      return clients.openWindow(target)
+    })
+  )
 })
