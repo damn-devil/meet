@@ -13,26 +13,6 @@ import { Emoji } from './components/Emoji.jsx'
 import { Loader } from './components/Loader.jsx'
 import './index.css'
 
-/* Вспышка «обновления экрана» как у электронной книги / Google Pixel:
-   короткий сброс полотна при смене темы, переключении вкладок и заходе в раздел. */
-function ScreenRefresh() {
-  const { state } = useStore()
-  const first = useRef(true)
-  const [play, setPlay] = useState(0)
-  const key = state.refreshKey
-  useEffect(() => {
-    if (first.current) {
-      first.current = false
-      setPlay(0)
-      return
-    }
-    setPlay(key)
-  }, [key])
-  if (!play) return null
-  const flashColor = state.isDark ? 'var(--brutal-paper)' : '#1b1b1b'
-  return <div key={play} className="screen-flash" style={{ background: flashColor }} aria-hidden="true" />
-}
-
 function useCompletionNotifications() {
   const { state, actions } = useStore()
   const seen = useRef({})
@@ -182,12 +162,13 @@ function AppInner() {
           </filter>
         </defs>
       </svg>
-      {screen}
+      <div className="screen-view" key={state.refreshKey}>
+        {screen}
+      </div>
       <RequestsBanner />
       <TabBar />
       <UpdateBanner />
       <Toast />
-      <ScreenRefresh />
     </div>
   )
 }

@@ -3204,28 +3204,44 @@ select {
   color: var(--brutal-ink);
 }
 
-/* ---------- Обновление экрана (как у электронной книги / Google Pixel) ----------
-   Короткая вспышка-сброс полотна при смене темы, переключении вкладок и входе в раздел. */
-.screen-flash {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483000;
-  pointer-events: none;
-  animation: eink-flash 0.34s ease-out forwards;
+/* ---------- Переходы как смена обоев у Google Pixel ----------
+   При смене темы цвета плавно перекрашиваются (transitions ниже);
+   при навигации контент мягко проявляется. */
+
+.screen-view {
+  animation: screen-in 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
 }
-@keyframes eink-flash {
-  0% {
+@keyframes screen-in {
+  from {
     opacity: 0;
+    transform: scale(0.985);
   }
-  15% {
+  to {
     opacity: 1;
+    transform: scale(1);
   }
-  58% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
+}
+
+/* плавный перекрас цветов при смене темы (как живые обои Pixel) */
+.app.brutal,
+.app.brutal *,
+.app.brutal *::before,
+.app.brutal *::after {
+  transition-duration: 0.5s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-property: background-color, color, border-color, background, fill, stroke, box-shadow;
+}
+
+/* кнопки и мелкие кликабельные элементы: пресс остаётся быстрым,
+   цвета при смене темы — плавными */
+.app.brutal :is(.btn, .btn-primary, .btn-soft, .btn-danger, .btn-danger-soft, .icon-btn, .chip, .segmented button, .avatar-opt, .theme-dot, .accent-dot, .tab-item, .day-cell, .task-card, .avatar-upload-btn) {
+  transition:
+    transform var(--gb-time) var(--gb-ease),
+    box-shadow var(--gb-time) var(--gb-ease),
+    filter var(--gb-time) var(--gb-ease),
+    background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ---------- Доступность: уважаем системную настройку движения ---------- */
