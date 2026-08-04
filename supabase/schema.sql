@@ -103,6 +103,12 @@ alter table public.tasks drop column if exists lat;
 alter table public.tasks drop column if exists lng;
 alter table public.tasks add column if not exists edit_count int not null default 0;
 
+-- Закреплённые события (булавка) и ручной порядок в списке предстоящих.
+-- Пинается любое событие: закреплённые всегда вверху; sort_order задаёт порядок
+-- внутри группы (renumber выполняется на сервере при каждом действии).
+alter table public.tasks add column if not exists is_pinned boolean not null default false;
+alter table public.tasks add column if not exists sort_order double precision;
+
 -- Комментарии к планам удалены (drop table после предыдущих версий)
 drop table if exists public.comments cascade;
 
@@ -279,6 +285,8 @@ as $$
     'completed_at', t.completed_at,
     'updated_at', t.updated_at,
     'edit_count', t.edit_count,
+    'is_pinned', t.is_pinned,
+    'sort_order', t.sort_order,
     'checkins', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', k.id, 'task_id', k.task_id, 'user_id', k.user_id, 'arrived_at', k.arrived_at
@@ -493,7 +501,8 @@ returns jsonb
 language sql security definer set search_path = public
 as $$
   select coalesce(
-    jsonb_agg(public.task_view(t.id) order by t.scheduled_at),
+    jsonb_agg(public.task_view(t.id)
+      order by t.is_pinned desc, t.sort_order nulls last, t.scheduled_at asc, t.id),
     '[]'::jsonb
   )
   from public.tasks t
@@ -607,6 +616,115 @@ begin
   values (v_couple_id, btrim(p_title), coalesce(p_description,''), p_scheduled_at, auth.uid())
   returning * into v_task;
   return public.task_view(v_task.id);
+end
+$$;
+
+-- Закрепление / открепление события. Переупорядочивает список предстоящих:
+-- сперва идут закреплённые, затем остальные — по времени. После каждого действия
+-- всей группе присваивается сквозной sort_order (1..n), чтобы порядок был
+-- одинаковым у обоих партнёров и перемещения были стабильными.
+create or replace function public.set_task_pin(p_task_id uuid, p_pinned boolean)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_couple_id uuid := public.auth_couple_id();
+  v_task public.tasks;
+  v_pinned uuid[] := '{}';
+  v_unpinned uuid[] := '{}';
+  v_ids uuid[] := '{}';
+  v_n int := 0;
+  v_id uuid;
+  r record;
+begin
+  select * into v_task from public.tasks where id = p_task_id and couple_id = v_couple_id;
+  if not found then raise exception 'Задача не найдена'; end if;
+  if v_task.status not in ('planned','in_progress') then
+    raise exception 'Закрепить можно только предстоящее событие';
+  end if;
+
+  update public.tasks set is_pinned = p_pinned, updated_at = now() where id = p_task_id;
+
+  -- стабильный порядок внутри каждой группы: сначала закреплённые, затем остальные
+  for r in
+    select id from public.tasks
+    where couple_id = v_couple_id and status in ('planned','in_progress') and is_pinned
+    order by sort_order nulls last, scheduled_at asc, id
+  loop v_pinned := v_pinned || r.id; end loop;
+  for r in
+    select id from public.tasks
+    where couple_id = v_couple_id and status in ('planned','in_progress') and not is_pinned
+    order by sort_order nulls last, scheduled_at asc, id
+  loop v_unpinned := v_unpinned || r.id; end loop;
+  v_ids := v_pinned || v_unpinned;
+
+  foreach v_id in array v_ids loop
+    v_n := v_n + 1;
+    update public.tasks set sort_order = v_n where id = v_id;
+  end loop;
+
+  return public.get_tasks();
+end
+$$;
+
+-- Перемещение предстоящего события вверх/вниз на одну позицию (в пределах своей
+-- группы закреплённых/незакреплённых). Стабильный промежуточный порядок: тот же,
+-- что у get_tasks. Синхронизация с партнёром — через Realtime (task:update).
+create or replace function public.move_task(p_task_id uuid, p_up boolean)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_couple_id uuid := public.auth_couple_id();
+  v_task public.tasks;
+  v_ids uuid[] := '{}';
+  v_i int := 0;
+  v_j int;
+  v_pos int;
+  v_tmp uuid;
+  v_n int := 0;
+  v_id uuid;
+  r record;
+begin
+  select * into v_task from public.tasks where id = p_task_id and couple_id = v_couple_id;
+  if not found then raise exception 'Задача не найдена'; end if;
+  if v_task.status not in ('planned','in_progress') then
+    raise exception 'Переставлять можно только предстоящие события';
+  end if;
+
+  -- упорядоченный список предстоящих (пины первыми)
+  for r in
+    select id from public.tasks
+    where couple_id = v_couple_id and status in ('planned','in_progress')
+    order by is_pinned desc, sort_order nulls last, scheduled_at asc, id
+  loop v_ids := v_ids || r.id; end loop;
+
+  if array_length(v_ids, 1) < 2 then return public.get_tasks(); end if;
+
+  -- позиция цели и соседа
+  for v_pos in 1..array_length(v_ids, 1) loop
+    if v_ids[v_pos] = p_task_id then v_i := v_pos; exit; end if;
+  end loop;
+  v_j := case when p_up then v_i - 1 else v_i + 1 end;
+  if v_i = 0 or v_j < 1 or v_j > array_length(v_ids, 1) then
+    return public.get_tasks();
+  end if;
+
+  -- не пересекаем границу закреплённых/незакреплённых
+  if (select is_pinned from public.tasks where id = v_ids[v_i])
+     <> (select is_pinned from public.tasks where id = v_ids[v_j]) then
+    return public.get_tasks();
+  end if;
+
+  v_tmp := v_ids[v_i]; v_ids[v_i] := v_ids[v_j]; v_ids[v_j] := v_tmp;
+
+  -- пересчитать сквозной порядок, чтобы он был одинаковым у обоих партнёров
+  foreach v_id in array v_ids loop
+    v_n := v_n + 1;
+    update public.tasks set sort_order = v_n where id = v_id;
+  end loop;
+
+  return public.get_tasks();
 end
 $$;
 

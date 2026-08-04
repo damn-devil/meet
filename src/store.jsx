@@ -332,6 +332,16 @@ export function StoreProvider({ children }) {
       dispatch({ type: 'UPSERT_TASK', task })
       return task
     },
+    setPin: async (id, pinned) => {
+      const tasks = await api.setTaskPin(id, pinned)
+      dispatch({ type: 'SET_TASKS', tasks: tasks || [] })
+      return tasks
+    },
+    moveTask: async (id, up) => {
+      const tasks = await api.moveTask(id, up)
+      dispatch({ type: 'SET_TASKS', tasks: tasks || [] })
+      return tasks
+    },
     setFreeDay: async (day, free) => {
       await api.setFreeDay(day, free)
       await refreshFreeDays()

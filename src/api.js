@@ -162,6 +162,8 @@ export const api = {
       p_scheduled_at: body.scheduled_at ? new Date(body.scheduled_at).toISOString() : null,
     }),
   checkin: (id) => rpc('check_in', { p_task_id: id }),
+  setTaskPin: (id, pinned) => rpc('set_task_pin', { p_task_id: id, p_pinned: pinned }),
+  moveTask: (id, up) => rpc('move_task', { p_task_id: id, p_up: up }),
   requestAgreement: (id, type, scheduled_at, title, description) =>
     rpc('request_agreement', {
       p_task_id: id,

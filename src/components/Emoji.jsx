@@ -79,6 +79,10 @@ function GLYPH(name) {
       return <path d="M6 6l12 12M18 6 6 18" {...LINE} />
     case 'chevron-left':
       return <path d="m15 18-6-6 6-6" {...LINE} />
+    case 'arrow-up':
+      return <path d="M4 5h16M12 19V7M6.5 11.5 12 6l5.5 5.5" {...LINE} />
+    case 'arrow-down':
+      return <path d="M4 19h16M12 5v12M6.5 12.5 12 18l5.5-5.5" {...LINE} />
     case 'star':
       return <path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.2l-5.8 3.2 1.1-6.4L2.6 9.4l6.5-.9Z" {...SOLID} />
     case 'camera':

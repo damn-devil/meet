@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useStore } from '../store.jsx'
 import { formatDateTime, relativeTime, statusMeta, avgRating } from '../lib/format.js'
 import { hasMapUrl } from '../lib/map.js'
@@ -10,15 +10,72 @@ export function TasksScreen() {
   const { state, actions } = useStore()
   const [filter, setFilter] = useState('upcoming')
   const [showAdd, setShowAdd] = useState(false)
+  const [reorderFor, setReorderFor] = useState(null)
+  const pressTimer = useRef(null)
+  const longPressed = useRef(false)
+
+  // Порядок предстоящих: закреплённые первыми (по sort_order), затем остальные
+  // (по sort_order, иначе по времени) — тот же, что и на сервере.
+  const cmpUpcoming = (a, b) => {
+    const pin = (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0)
+    if (pin) return pin
+    const sa = a.sort_order ?? null
+    const sb = b.sort_order ?? null
+    if (sa != null && sb != null) return sa - sb
+    if (sa != null) return -1
+    if (sb != null) return 1
+    return (a.scheduled_at || 0) - (b.scheduled_at || 0)
+  }
 
   const tasks = useMemo(() => {
     const arr = [...state.tasks]
-    if (filter === 'upcoming') return arr.filter((t) => ['planned', 'in_progress'].includes(t.status)).sort((a, b) => (a.scheduled_at || 0) - (b.scheduled_at || 0))
+    if (filter === 'upcoming') return arr.filter((t) => ['planned', 'in_progress'].includes(t.status)).sort(cmpUpcoming)
     if (filter === 'done') return arr.filter((t) => t.status === 'completed').sort((a, b) => (b.completed_at || 0) - (a.completed_at || 0))
     if (filter === 'missed') return arr.filter((t) => t.status === 'missed').sort((a, b) => (b.scheduled_at || 0) - (a.scheduled_at || 0))
     if (filter === 'cancelled') return arr.filter((t) => t.status === 'cancelled').sort((a, b) => (b.scheduled_at || 0) - (a.scheduled_at || 0))
     return arr
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.tasks, filter])
+
+  const startPress = (taskId) => {
+    if (filter !== 'upcoming') return
+    clearTimeout(pressTimer.current)
+    longPressed.current = false
+    pressTimer.current = setTimeout(() => {
+      longPressed.current = true
+      setReorderFor(taskId)
+    }, 550)
+  }
+  const cancelPress = () => clearTimeout(pressTimer.current)
+
+  const handleCardClick = (taskId) => {
+    if (longPressed.current) {
+      longPressed.current = false
+      return
+    }
+    if (reorderFor === taskId) {
+      setReorderFor(null)
+      return
+    }
+    setReorderFor(null)
+    actions.openTask(taskId)
+  }
+
+  const pin = async (id, pinned) => {
+    try {
+      await actions.setPin(id, pinned)
+      actions.toast(pinned ? 'Закреплено' : 'Откреплено')
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    }
+  }
+  const move = async (id, up) => {
+    try {
+      await actions.moveTask(id, up)
+    } catch (e) {
+      actions.toast(e.message, 'error')
+    }
+  }
 
   const counts = useMemo(() => ({
     upcoming: state.tasks.filter((t) => ['planned', 'in_progress'].includes(t.status)).length,
@@ -70,8 +127,18 @@ export function TasksScreen() {
             <span>Добавьте первое место, куда сходите вместе</span>
           </div>
         )}
-        {tasks.map((t) => (
-          <TaskCard key={t.id} task={t} onClick={() => actions.openTask(t.id)} />
+        {tasks.map((t, idx) => (
+          <TaskCard
+            key={t.id}
+            task={t}
+            editing={reorderFor === t.id}
+            isFirst={idx === 0}
+            isLast={idx === tasks.length - 1}
+            onPin={pin}
+            onMove={move}
+            onClick={() => handleCardClick(t.id)}
+            pressHandlers={{ onPressStart: () => startPress(t.id), onPressEnd: cancelPress }}
+          />
         ))}
       </div>
 
@@ -80,7 +147,7 @@ export function TasksScreen() {
   )
 }
 
-function TaskCard({ task, onClick }) {
+function TaskCard({ task, editing, isFirst, isLast, onPin, onMove, onClick, pressHandlers }) {
   const meta = statusMeta(task.status)
   const rating = avgRating(task)
   const partnerCheckins = task.checkins.length
@@ -88,12 +155,20 @@ function TaskCard({ task, onClick }) {
   const pendingAgreement = task.agreements?.find((a) => a.status === 'pending')
   const doneAt = task.status === 'completed' ? task.completed_at || task.scheduled_at : task.scheduled_at
   return (
-    <div className={`task-card glass ${isLate ? 'late' : ''}`} onClick={onClick}>
+    <div
+      className={`task-card glass ${isLate ? 'late' : ''} ${editing ? 'editing' : ''}`}
+      onClick={onClick}
+      onPointerDown={() => pressHandlers?.onPressStart()}
+      onPointerUp={pressHandlers?.onPressEnd}
+      onPointerCancel={pressHandlers?.onPressEnd}
+      onPointerLeave={pressHandlers?.onPressEnd}
+    >
       <div className="task-card-top">
         <span className="task-icon"><Emoji name="pencil" size={16} /></span>
         <div className="task-card-body">
           <h3>
             {task.title}
+            {task.is_pinned && <span className="task-pin-badge" title="Закреплено"><Emoji name="pin" size={13} /></span>}
             {hasMapUrl(task.description) && <span className="task-map-badge" title="Есть точка на карте"><Emoji name="map" size={13} /></span>}
           </h3>
           {task.scheduled_at && <p className="task-place">{formatDateTime(task.scheduled_at)}</p>}
@@ -114,6 +189,25 @@ function TaskCard({ task, onClick }) {
           {rating && <span className="task-rating"><Emoji name="star" size={13} /> {rating}</span>}
         </span>
       </div>
+      {editing && (
+        <div className="task-reorder" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+          <span className="task-reorder-hint">Закрепить и переставить</span>
+          <button
+            className={`reorder-btn ${task.is_pinned ? 'active' : ''}`}
+            title={task.is_pinned ? 'Открепить' : 'Закрепить'}
+            aria-label={task.is_pinned ? 'Открепить' : 'Закрепить'}
+            onClick={(e) => { e.stopPropagation(); onPin(task.id, !task.is_pinned) }}
+          >
+            <Emoji name="pin" size={16} />
+          </button>
+          <button className="reorder-btn" title="Вверх" aria-label="Передвинуть вверх" disabled={isFirst} onClick={(e) => { e.stopPropagation(); onMove(task.id, true) }}>
+            <Emoji name="arrow-up" size={16} />
+          </button>
+          <button className="reorder-btn" title="Вниз" aria-label="Передвинуть вниз" disabled={isLast} onClick={(e) => { e.stopPropagation(); onMove(task.id, false) }}>
+            <Emoji name="arrow-down" size={16} />
+          </button>
+        </div>
+      )}
       {pendingAgreement && <CardAgreement task={task} agreement={pendingAgreement} onClick={onClick} />}
     </div>
   )
