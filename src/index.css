@@ -1786,6 +1786,29 @@ select {
   padding: 13px 14px;
   font-size: 15px;
 }
+.search-wrap {
+  position: relative;
+  flex: 1;
+}
+.search-wrap input {
+  width: 100%;
+  padding-left: 30px;
+}
+.search-at {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text2);
+  font-size: 15px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.search-nick {
+  color: var(--accent);
+  font-style: normal;
+  margin-left: 3px;
+}
 .search-results {
   margin-top: 8px;
   border: 1px solid var(--hairline);
@@ -2666,6 +2689,15 @@ select {
   border: 2px solid var(--brutal-ink);
   border-radius: 6px;
   box-shadow: 3px 3px 0 var(--brutal-ink);
+}
+
+/* аватарки квадратные, в брутал-стиле (резкая рамка + сдвиг-тень) */
+.app.brutal .avatar-img,
+.app.brutal .avatar-emoji {
+  border-radius: 3px;
+  border: 2px solid var(--brutal-ink);
+  box-shadow: 3px 3px 0 var(--brutal-btn-sh);
+  background: var(--brutal-card);
 }
 
 /* ----- модалки ----- */

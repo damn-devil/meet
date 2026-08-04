@@ -32,9 +32,11 @@ export function ProfileScreen() {
   const [cropSrc, setCropSrc] = useState(null)
   const [telegram, setTelegram] = useState(me?.telegram || '')
   const [imessage, setImessage] = useState(me?.imessage || '')
+  const [phone, setPhone] = useState(me?.phone || '')
   const [username, setUsername] = useState(me?.username || '')
   const [usernameState, setUsernameState] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmLogout, setConfirmLogout] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
@@ -90,7 +92,7 @@ export function ProfileScreen() {
       }
     }
     try {
-      await actions.updateMe({ name, bio, avatar, avatar_url: avatarUrl, telegram, imessage, username: u || null })
+      await actions.updateMe({ name, bio, avatar, avatar_url: avatarUrl, telegram, imessage, phone, username: u || null })
       setEditing(false)
       actions.toast('Профиль сохранён', 'success')
     } catch (e) {
@@ -113,7 +115,7 @@ export function ProfileScreen() {
       const blob = dataUrlToBlob(dataUrl)
       const url = await actions.uploadAvatar(blob, 'jpg')
       setAvatarUrl(url)
-      await actions.updateMe({ name, bio, avatar, avatar_url: url, telegram, imessage, username: username.trim() || null })
+      await actions.updateMe({ name, bio, avatar, avatar_url: url, telegram, imessage, phone, username: username.trim() || null })
       actions.toast('Фото профиля обновлено', 'success')
     } catch (err) {
       actions.toast(err.message, 'error')
@@ -135,6 +137,7 @@ export function ProfileScreen() {
       <div className="profile-head">
         <Avatar url={me?.avatar_url} emoji={me?.avatar} size="big" alt={me?.name} />
         <h2>{me?.name}</h2>
+        {me?.nick && <p className="profile-username account-nick">{me.nick}</p>}
         {me?.username && <p className="profile-username">{me.username}</p>}
         <p className="profile-bio">{me?.bio || 'Пока ничего о себе'}</p>
         {editing ? (
@@ -186,6 +189,10 @@ export function ProfileScreen() {
               <span>iMessage</span>
               <input value={imessage} onChange={(e) => setImessage(e.target.value)} placeholder="+7 999 123-45-67 или email" autoCapitalize="none" autoCorrect="off" />
             </label>
+            <label className="field">
+              <span>Телефон</span>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+7 999 123-45-67" inputMode="tel" autoComplete="tel" />
+            </label>
             <div className="profile-edit-actions">
               <button className="btn btn-primary" onClick={saveProfile}>Сохранить</button>
               <button className="btn btn-soft" onClick={() => setEditing(false)}>Отмена</button>
@@ -206,9 +213,20 @@ export function ProfileScreen() {
         <button className="btn btn-soft btn-block" onClick={() => setShowSettings(true)}>
           <Emoji name="gear" size={16} /> Основные настройки
         </button>
-        <button className="btn btn-danger-soft btn-block" onClick={async () => { await actions.logout(); location.reload() }}>
+        <button className="btn btn-danger-soft btn-block" onClick={() => setConfirmLogout(true)}>
           Выйти
         </button>
+        {confirmLogout && (
+          <div className="danger-confirm glass">
+            <p>Выйти из аккаунта на этом устройстве?</p>
+            <div className="danger-actions">
+              <button className="btn btn-soft" onClick={() => setConfirmLogout(false)}>Отмена</button>
+              <button className="btn btn-danger" onClick={async () => { setConfirmLogout(false); await actions.logout(); location.reload() }}>
+                Да, выйти
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="danger-zone">

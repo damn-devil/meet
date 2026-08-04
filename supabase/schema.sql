@@ -49,6 +49,14 @@ alter table public.profiles add column if not exists autocheck boolean default t
 alter table public.profiles add column if not exists username text;
 create unique index if not exists idx_profiles_username on public.profiles (username) where username is not null;
 
+-- Уникальный порядковый номер регистрации (никнейм вида #42). Выдаётся из
+-- последовательности при создании профиля, потому не повторяется и не меняется.
+create sequence if not exists public.profiles_reg_no_seq;
+alter table public.profiles add column if not exists reg_no bigint;
+
+-- Телефон для поиска и связи
+alter table public.profiles add column if not exists phone text default '';
+
 -- Админ-флаг: назначить админа можно только из SQL Editor, например:
 --   update public.profiles set is_admin = true
 --   where id = (select id from auth.users where lower(email) = 'admin@example.com');
@@ -223,7 +231,8 @@ language sql stable security definer set search_path = public
 as $$
   select jsonb_build_object(
     'id', p.id, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url,
-    'username', p.username, 'is_admin', p.is_admin,
+    'username', p.username, 'nick', case when p.reg_no is not null then '#' || p.reg_no else null end,
+    'phone', p.phone, 'is_admin', p.is_admin,
     'bio', p.bio, 'theme', p.theme,
     'accent', p.accent, 'autocheck', p.autocheck,
     'telegram', p.telegram, 'imessage', p.imessage
@@ -242,7 +251,8 @@ as $$
     'members', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', p.id, 'name', p.name, 'avatar', p.avatar, 'avatar_url', p.avatar_url,
-        'username', p.username,
+        'username', p.username, 'nick', case when p.reg_no is not null then '#' || p.reg_no else null end,
+        'phone', p.phone,
         'bio', p.bio, 'theme', p.theme,
         'accent', p.accent, 'autocheck', p.autocheck,
         'telegram', p.telegram, 'imessage', p.imessage
@@ -371,8 +381,12 @@ create or replace function public.create_profile(p_name text)
 returns jsonb
 language sql security definer set search_path = public
 as $$
-  insert into public.profiles (id, name)
-  values (auth.uid(), coalesce(nullif(btrim(p_name), ''), 'Пользователь'))
+  insert into public.profiles (id, name, reg_no)
+  values (
+    auth.uid(),
+    coalesce(nullif(btrim(p_name), ''), 'Пользователь'),
+    nextval('public.profiles_reg_no_seq')
+  )
   on conflict (id) do update set name = excluded.name
   returning public.profile_view(id)
 $$;
@@ -396,7 +410,7 @@ create or replace function public.update_profile(
   p_bio text default null, p_theme text default null,
   p_accent text default null, p_autocheck boolean default null,
   p_telegram text default null, p_imessage text default null,
-  p_username text default null
+  p_username text default null, p_phone text default null
 )
 returns jsonb
 language plpgsql security definer set search_path = public
@@ -422,6 +436,9 @@ begin
   end if;
   if length(coalesce(p_telegram, '')) > 60 or length(coalesce(p_imessage, '')) > 100 then
     raise exception 'Недопустимые контакты';
+  end if;
+  if length(coalesce(p_phone, '')) > 30 then
+    raise exception 'Недопустимый номер телефона';
   end if;
   if p_username is not null then
     v_username := lower(btrim(p_username));
@@ -449,7 +466,8 @@ begin
     accent = coalesce(p_accent, accent),
     autocheck = case when p_autocheck is not null then p_autocheck else autocheck end,
     telegram = coalesce(btrim(p_telegram), telegram),
-    imessage = coalesce(btrim(p_imessage), imessage)
+    imessage = coalesce(btrim(p_imessage), imessage),
+    phone = coalesce(btrim(p_phone), phone)
   where id = auth.uid();
 
   return public.profile_view(auth.uid());
@@ -806,8 +824,8 @@ as $$
   select jsonb_build_object(
     'id', r.id, 'from_id', r.from_id, 'to_id', r.to_id, 'status', r.status,
     'created_at', r.created_at,
-    'from', jsonb_build_object('id', f.id, 'name', f.name, 'username', f.username, 'avatar', f.avatar, 'avatar_url', f.avatar_url),
-    'to', jsonb_build_object('id', t.id, 'name', t.name, 'username', t.username, 'avatar', t.avatar, 'avatar_url', t.avatar_url)
+    'from', jsonb_build_object('id', f.id, 'name', f.name, 'username', f.username, 'nick', case when f.reg_no is not null then '#' || f.reg_no else null end, 'avatar', f.avatar, 'avatar_url', f.avatar_url),
+    'to', jsonb_build_object('id', t.id, 'name', t.name, 'username', t.username, 'nick', case when t.reg_no is not null then '#' || t.reg_no else null end, 'avatar', t.avatar, 'avatar_url', t.avatar_url)
   )
   from public.couple_requests r
   join public.profiles f on f.id = r.from_id
@@ -825,25 +843,36 @@ as $$
     and r.status = 'pending'
 $$;
 
--- Поиск людей по юзернейму (без тех, кто уже в паре и без себя).
--- Совпадение идёт по части после @, поэтому не важно пишет ли пользователь @van или van.
+-- Поиск людей: по юзернейму (@login и потом после @), по имени, по телефону
+-- и по порядковому номеру регистрации (#N). Исключаем себя и тех, кто уже в паре.
 create or replace function public.search_users(p_query text default null)
 returns jsonb
-language sql stable security definer set search_path = public
+language plpgsql stable security definer set search_path = public
 as $$
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'id', p.id, 'name', p.name, 'username', p.username,
-    'avatar', p.avatar, 'avatar_url', p.avatar_url
-  ) order by p.username), '[]'::jsonb)
-  from public.profiles p
-  where p.id <> auth.uid()
-    and p.couple_id is null
-    and p.username is not null
-    and p_query is not null
-    and btrim(p_query) <> ''
-    and replace(lower(p.username), '@', '')
-        ilike replace(lower(btrim(p_query)), '@', '') || '%'
-  limit 20
+declare
+  v_q text := lower(btrim(coalesce(p_query, '')));
+  v_q_user text := replace(v_q, '@', '');
+  v_q_digits text := regexp_replace(v_q, '\D', '', 'g');
+begin
+  if v_q = '' then return '[]'::jsonb; end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', p.id, 'name', p.name, 'username', p.username,
+      'nick', case when p.reg_no is not null then '#' || p.reg_no else null end,
+      'avatar', p.avatar, 'avatar_url', p.avatar_url
+    ) order by p.reg_no nulls last)
+    from public.profiles p
+    where p.id <> auth.uid()
+      and p.couple_id is null
+      and (
+        replace(lower(coalesce(p.username, '')), '@', '') ilike '%' || v_q_user || '%'
+        or lower(p.name) ilike v_q_user || '%'
+        or (v_q_digits <> '' and regexp_replace(coalesce(p.phone, ''), '\D', '', 'g') like '%' || v_q_digits || '%')
+        or (p.reg_no is not null and v_q_digits <> '' and p.reg_no::text = v_q_digits)
+      )
+    limit 20
+  ), '[]'::jsonb);
+end
 $$;
 
 create or replace function public.send_couple_request(p_to_id uuid)

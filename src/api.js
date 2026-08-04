@@ -121,6 +121,7 @@ export const api = {
       p_telegram: body.telegram,
       p_imessage: body.imessage,
       p_username: body.username ?? null,
+      p_phone: body.phone ?? null,
     })
     return api.me()
   },
