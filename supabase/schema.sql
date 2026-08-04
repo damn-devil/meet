@@ -297,15 +297,17 @@ $$;
 -- Бизнес-функции (RPC)
 -- ============================================================
 
--- Отметить просроченные планы как «пропущено»
+-- Отметить просроченные планы как «пропущено».
+-- НЕ привязано к auth.uid(): вызывается и pg_cron-планировщиком (там auth.uid() = null,
+-- иначе функция «не видела» ни одной задачи), и из check_in. Правило глобальное:
+-- задача в planned/in_progress, просроченная более чем на 2 часа, помечается missed.
 create or replace function public.sweep_missed()
 returns void
 language sql security definer set search_path = public
 as $$
   update public.tasks t
   set status = 'missed', updated_at = now()
-  where t.couple_id = public.auth_couple_id()
-    and t.status in ('planned','in_progress')
+  where t.status in ('planned','in_progress')
     and t.scheduled_at is not null
     and t.scheduled_at + interval '2 hours' < now()
 $$;
@@ -397,6 +399,25 @@ as $$
 declare
   v_username text;
 begin
+  if p_name is not null and btrim(p_name) <> '' and length(btrim(p_name)) > 40 then
+    raise exception 'Имя слишком длинное (до 40 символов)';
+  end if;
+  if length(coalesce(p_bio, '')) > 200 then
+    raise exception 'Описание слишком длинное (до 200 символов)';
+  end if;
+  if length(coalesce(p_avatar_url, '')) > 500 then
+    raise exception 'Ссылка на фото слишком длинная';
+  end if;
+  if p_avatar_url is not null and p_avatar_url <> ''
+     and not (p_avatar_url ~ '^https?://[^"''<>()\\ ]+$'
+              or p_avatar_url ~ '^data:image/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$'
+              or p_avatar_url ~ '^/object/public/')
+  then
+    raise exception 'Недопустимая ссылка на фото';
+  end if;
+  if length(coalesce(p_telegram, '')) > 60 or length(coalesce(p_imessage, '')) > 100 then
+    raise exception 'Недопустимые контакты';
+  end if;
   if p_username is not null then
     v_username := lower(btrim(p_username));
     if v_username = '' then
@@ -731,12 +752,29 @@ drop function if exists public.update_couple_settings(integer, integer, integer,
 
 create or replace function public.update_couple_settings(p_bg text default null)
 returns jsonb
-language sql security definer set search_path = public
+language plpgsql security definer set search_path = public
 as $$
+declare
+  v_bg text := btrim(coalesce(p_bg, ''));
+begin
+  if v_bg <> '' then
+    -- Фон вставляется в CSS как url("..."), поэтому не пускаем произвольные строки.
+    -- Клиент всегда шлёт data: (jpeg из canvas) либо, при желании, https-ссылку.
+    -- Разрешаем только строгий data-URL или https без кавычек/скобок/кавычек.
+    if length(v_bg) > 200000 then
+      raise exception 'Фон слишком большой';
+    end if;
+    if not (v_bg ~ '^data:image/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$')
+       and not (v_bg ~ '^https?://[^"''<>()\\ ]+$')
+    then
+      raise exception 'Недопустимый фон';
+    end if;
+  end if;
   update public.couples set
-    bg = case when p_bg is not null then btrim(p_bg) else bg end
+    bg = v_bg
   where id = public.auth_couple_id()
-  returning public.couple_view(id)
+  returning public.couple_view(id);
+end
 $$;
 
 -- ============================================================
@@ -885,9 +923,18 @@ $$;
 -- Права
 -- ============================================================
 
+-- Доступ только для авторизованных: все функции и таблицы безопасны благодаря
+-- security definer + явным проверкам auth.uid()/is_admin(). Анонимам (не вошедшим)
+-- убираем право читать таблицы и вызывать функции — они аутентифицируются через
+-- GoTrue, функционала в public им не нужно. Usage на схему оставляем (его требует
+-- PostgREST при интроспекции).
 grant usage on schema public to anon, authenticated;
-grant execute on all functions in schema public to anon, authenticated;
-grant select on all tables in schema public to anon, authenticated;
+revoke all on all tables in schema public from anon;
+revoke all on all sequences in schema public from anon;
+revoke all on all functions in schema public from anon;
+grant execute on all functions in schema public to authenticated;
+grant select on all tables in schema public to authenticated;
+grant select, usage on all sequences in schema public to authenticated;
 
 -- ============================================================
 -- Планировщик: помечать просроченные планы как «пропущено»
@@ -941,15 +988,24 @@ create policy "avatars_select" on storage.objects
 
 drop policy if exists "avatars_insert" on storage.objects;
 create policy "avatars_insert" on storage.objects
-  for insert to authenticated with check (bucket_id = 'avatars' and owner = auth.uid());
+  for insert to authenticated with check (
+    bucket_id = 'avatars' and owner = auth.uid()
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
 
 drop policy if exists "avatars_update" on storage.objects;
 create policy "avatars_update" on storage.objects
-  for update to authenticated using (bucket_id = 'avatars' and owner = auth.uid());
+  for update to authenticated using (
+    bucket_id = 'avatars' and owner = auth.uid()
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
 
 drop policy if exists "avatars_delete" on storage.objects;
 create policy "avatars_delete" on storage.objects
-  for delete to authenticated using (bucket_id = 'avatars' and owner = auth.uid());
+  for delete to authenticated using (
+    bucket_id = 'avatars' and owner = auth.uid()
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
 -- ============================================================
 -- Календарь свободных дней
 -- ============================================================
