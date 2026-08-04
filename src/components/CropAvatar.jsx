@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Emoji } from './Emoji.jsx'
+import { Loader } from './Loader.jsx'
 
 const BOX = 280
 const OUT = 512
@@ -118,7 +119,7 @@ export function CropAvatar({ src, onCancel, onSave }) {
             </div>
           </>
         ) : (
-          <div className="crop-loading">Загрузка фото…</div>
+          <div className="crop-loading"><Loader size={28} /> Загрузка фото…</div>
         )}
 
         <div className="crop-actions">

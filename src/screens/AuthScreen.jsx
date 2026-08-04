@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store.jsx'
+import { Loader } from '../components/Loader.jsx'
 
 export function AuthScreen() {
   const { actions } = useStore()
@@ -49,7 +50,7 @@ export function AuthScreen() {
           </label>
           {error && <div className="error-banner">{error}</div>}
           <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-            {busy ? 'Подождите...' : mode === 'login' ? 'Войти' : 'Начать'}
+            {busy ? <span className="btn-busy"><Loader size={18} /> Подождите…</span> : (mode === 'login' ? 'Войти' : 'Начать')}
           </button>
         </form>
       </div>

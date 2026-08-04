@@ -4,6 +4,7 @@ import { Avatar } from '../components/Avatar.jsx'
 import { Icon } from '../components/Icon.jsx'
 import { telegramUrl, imessageUrl, hasAnyContact } from '../lib/contacts.js'
 import { Emoji } from '../components/Emoji.jsx'
+import { Loader } from '../components/Loader.jsx'
 
 export function CoupleSection() {
   const { state, actions } = useStore()
@@ -127,7 +128,7 @@ export function CoupleSection() {
                 <div className="danger-actions">
                   <button className="btn btn-soft" onClick={() => setConfirmBreak(false)}>Отмена</button>
                   <button className="btn btn-danger" onClick={breakUp} disabled={breaking}>
-                    {breaking ? 'Разрываем…' : 'Да, разорвать'}
+                    {breaking ? <span className="btn-busy"><Loader size={16} /> Разрываем…</span> : 'Да, разорвать'}
                   </button>
                 </div>
               </div>

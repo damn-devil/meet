@@ -7,6 +7,7 @@ import { CropAvatar } from '../components/CropAvatar.jsx'
 import { CoupleSection } from './CoupleScreen.jsx'
 import { MoodMini } from '../components/MoodBar.jsx'
 import { Emoji, avatarName } from '../components/Emoji.jsx'
+import { Loader } from '../components/Loader.jsx'
 
 function dataUrlToBlob(dataUrl) {
   const [meta, b64] = dataUrl.split(',')
@@ -140,7 +141,7 @@ export function ProfileScreen() {
             <div className="avatar-photo-wrap">
               <Avatar url={avatarUrl} emoji={avatar} size="big" alt={name} />
               <label className="avatar-upload-btn">
-                {uploading ? 'Загрузка…' : <><Emoji name="camera" size={16} /> Загрузить фото</>}
+                {uploading ? <span className="btn-busy"><Loader size={16} /> Загрузка…</span> : <><Emoji name="camera" size={16} /> Загрузить фото</>}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={pickAvatar} />
               </label>
             </div>
@@ -219,7 +220,7 @@ export function ProfileScreen() {
             <div className="danger-actions">
               <button className="btn btn-soft" onClick={() => setConfirmDelete(false)}>Отмена</button>
               <button className="btn btn-danger" onClick={deleteAccount} disabled={deleting}>
-                {deleting ? 'Удаляем…' : 'Да, удалить'}
+                {deleting ? <span className="btn-busy"><Loader size={16} /> Удаляем…</span> : 'Да, удалить'}
               </button>
             </div>
           </div>

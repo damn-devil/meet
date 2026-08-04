@@ -5,6 +5,7 @@ import { extractMapUrl } from '../lib/map.js'
 import { Avatar } from '../components/Avatar.jsx'
 import { MoodMini } from '../components/MoodBar.jsx'
 import { Emoji } from '../components/Emoji.jsx'
+import { Loader } from '../components/Loader.jsx'
 
 export function TaskDetailScreen({ taskId }) {
   const { state, actions } = useStore()
@@ -281,7 +282,7 @@ function RatingModal({ task, onClose }) {
             <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Как вам было?" />
           </label>
           <button className="btn btn-primary btn-block" onClick={save} disabled={busy}>
-            {busy ? 'Сохраняем...' : 'Сохранить оценку'}
+            {busy ? <span className="btn-busy"><Loader size={18} /> Сохраняем…</span> : 'Сохранить оценку'}
           </button>
         </div>
       </div>

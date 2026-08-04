@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store.jsx'
 import { Emoji } from './Emoji.jsx'
+import { Loader } from './Loader.jsx'
 
 export function AddTaskModal({ onClose }) {
   const { actions } = useStore()
@@ -75,7 +76,7 @@ export function AddTaskModal({ onClose }) {
           {error && <div className="error-banner">{error}</div>}
 
           <button className="btn btn-primary btn-block" onClick={submit} disabled={busy}>
-            {busy ? 'Сохраняем...' : 'Сохранить событие'}
+            {busy ? <span className="btn-busy"><Loader size={18} /> Сохраняем…</span> : 'Сохранить событие'}
           </button>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { Icon } from './components/Icon.jsx'
 import { Avatar } from './components/Avatar.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { Emoji } from './components/Emoji.jsx'
+import { Loader } from './components/Loader.jsx'
 import './index.css'
 
 function useCompletionNotifications() {
@@ -95,8 +96,7 @@ function AppInner() {
   if (state.loading) {
     return (
       <div className="boot-screen">
-        <div className="boot-paw"><Emoji name="paw" size={46} /></div>
-        <div className="boot-spinner" />
+        <Loader />
       </div>
     )
   }
