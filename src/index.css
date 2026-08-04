@@ -2406,11 +2406,11 @@ select {
   --brutal-card: #222222;
   --brutal-muted: #9a9080;
   --brutal-btn-bg: #000;
-  --brutal-btn-fg: #fff;
+  --brutal-btn-fg: #f2ede0;
   --brutal-btn-bd: #fff;
   --brutal-btn-sh: #fff;
   --brutal-field-bg: #000;
-  --brutal-field-fg: #fff;
+  --brutal-field-fg: #f2ede0;
 }
 
 /* плоская бумага вместо mesh-градиента и сетки (без прозрачностей) */
@@ -2471,7 +2471,7 @@ select {
 }
 .app.brutal .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--brutal-btn-fg);
 }
 .app.brutal .btn-danger {
   background: var(--red);
@@ -2500,6 +2500,14 @@ select {
   transform: translate(4px, 4px);
   box-shadow: 0 0 0 var(--brutal-ink);
   filter: none;
+}
+
+/* тёмная тема: белые надписи → бежевые */
+.app.brutal.is-dark .toast.success,
+.app.brutal.is-dark .toast.error,
+.app.brutal.is-dark .contact-btn.tg,
+.app.brutal.is-dark .day-cell.is-both {
+  color: var(--brutal-ink);
 }
 
 /* ----- поля ввода: терминальные (0xnihilism), цвета из темы ----- */

@@ -15,20 +15,23 @@ export function TasksScreen() {
     const arr = [...state.tasks]
     if (filter === 'upcoming') return arr.filter((t) => ['planned', 'in_progress'].includes(t.status)).sort((a, b) => (a.scheduled_at || 0) - (b.scheduled_at || 0))
     if (filter === 'done') return arr.filter((t) => t.status === 'completed').sort((a, b) => (b.completed_at || 0) - (a.completed_at || 0))
-    if (filter === 'missed') return arr.filter((t) => ['missed', 'cancelled'].includes(t.status)).sort((a, b) => (b.scheduled_at || 0) - (a.scheduled_at || 0))
+    if (filter === 'missed') return arr.filter((t) => t.status === 'missed').sort((a, b) => (b.scheduled_at || 0) - (a.scheduled_at || 0))
+    if (filter === 'cancelled') return arr.filter((t) => t.status === 'cancelled').sort((a, b) => (b.scheduled_at || 0) - (a.scheduled_at || 0))
     return arr
   }, [state.tasks, filter])
 
   const counts = useMemo(() => ({
     upcoming: state.tasks.filter((t) => ['planned', 'in_progress'].includes(t.status)).length,
     done: state.tasks.filter((t) => t.status === 'completed').length,
-    missed: state.tasks.filter((t) => ['missed', 'cancelled'].includes(t.status)).length,
+    missed: state.tasks.filter((t) => t.status === 'missed').length,
+    cancelled: state.tasks.filter((t) => t.status === 'cancelled').length,
   }), [state.tasks])
 
   const filters = [
     { id: 'upcoming', label: 'Предстоящие', count: counts.upcoming },
     { id: 'done', label: 'Выполненные', count: counts.done },
     { id: 'missed', label: 'Пропущенные', count: counts.missed },
+    { id: 'cancelled', label: 'Отменённые', count: counts.cancelled },
   ]
 
   return (
