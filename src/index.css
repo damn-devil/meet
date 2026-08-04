@@ -2480,6 +2480,7 @@ select {
   --brutal-btn-sh: var(--brutal-ink);
   --brutal-field-bg: var(--brutal-card);
   --brutal-field-fg: var(--brutal-ink);
+  --accent: #9b542e;
 }
 
 /* тёмная тема в брутале: инвертируем бумагу/кард и кнопки */
