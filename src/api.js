@@ -137,12 +137,18 @@ export const api = {
       if (paths.length) await client.storage.from('avatars').remove(paths)
     } catch {}
   },
-  uploadAvatar: async (file, ext = 'jpg') => {
+  uploadAvatar: async (file, ext) => {
     const client = supabaseReady()
     const { data: session } = await client.auth.getSession()
     const uid = session?.session?.user?.id || 'anon'
-    const path = `${uid}/${Date.now()}.${ext}`
-    const { error } = await client.storage.from('avatars').upload(path, file, { upsert: true, cacheControl: '3600' })
+    const mime = (file?.type || '').toLowerCase()
+    const actualExt = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : mime === 'image/jpeg' ? 'jpg' : ext || 'jpg'
+    const path = `${uid}/${Date.now()}.${actualExt}`
+    const { error } = await client.storage.from('avatars').upload(path, file, {
+      upsert: true,
+      cacheControl: '3600',
+      contentType: file?.type || undefined,
+    })
     if (error) throw new Error(error.message || 'Не удалось загрузить фото')
     const { data: pub } = client.storage.from('avatars').getPublicUrl(path)
     return pub?.publicUrl || null

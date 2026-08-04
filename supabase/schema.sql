@@ -157,6 +157,10 @@ create table if not exists public.couple_requests (
 alter table public.couple_requests add column if not exists responded_at timestamptz;
 create index if not exists idx_requests_from on public.couple_requests(from_id);
 create index if not exists idx_requests_to on public.couple_requests(to_id);
+-- Не более одного активного запроса между парой (в любую сторону) — защита от гонки
+create unique index if not exists idx_requests_pending_pair
+  on public.couple_requests (greatest(from_id, to_id), least(from_id, to_id))
+  where status = 'pending';
 
 -- Чат между партнёрами удалён (drop table после предыдущих версий)
 drop table if exists public.messages cascade;
@@ -336,7 +340,8 @@ begin
     raise exception 'Вы уже в паре. Чтобы сменить пару, напишите в поддержку';
   end if;
   if p_invite is not null and btrim(p_invite) <> '' then
-    select * into v_couple from public.couples where invite_code = upper(btrim(p_invite));
+    -- for update: исключаем гонку, когда двое одновременно присоединяются по коду
+    select * into v_couple from public.couples where invite_code = upper(btrim(p_invite)) for update;
     if not found then
       raise exception 'Код приглашения не найден';
     end if;
@@ -487,18 +492,32 @@ as $$
   where t.id = p_task_id and t.couple_id = public.auth_couple_id()
 $$;
 
--- Удаление аккаунта: пару, планы и данные партнёра не задевает,
--- у партнёра couple_id обнуляется, его профиль и переписка остаются.
+-- Удаление аккаунта: пара и общие данные партнёра НЕ удаляются. Пользователь
+-- выходит из пары (couple_id = null), а события, созданные им, передаются партнёру,
+-- чтобы не нарушить ссылки на profiles.created_by. Если партнёра в паре нет —
+-- пара осиротела и удаляется вместе с каскадом данных.
 create or replace function public.delete_account()
 returns void
 language plpgsql security definer set search_path = public
 as $$
 declare
   v_couple_id uuid := public.auth_couple_id();
+  v_partner uuid;
 begin
   delete from public.couple_requests where from_id = auth.uid() or to_id = auth.uid();
+  delete from public.checkins where user_id = auth.uid();
+  delete from public.ratings where user_id = auth.uid();
+  delete from public.agreements where requested_by = auth.uid();
   if v_couple_id is not null then
-    delete from public.couples where id = v_couple_id;
+    select id into v_partner from public.profiles
+    where couple_id = v_couple_id and id <> auth.uid()
+    limit 1;
+    if v_partner is not null then
+      update public.tasks set created_by = v_partner where created_by = auth.uid();
+      update public.profiles set couple_id = null where id = auth.uid();
+    else
+      delete from public.couples where id = v_couple_id;
+    end if;
   end if;
   delete from auth.users where id = auth.uid();
 end
@@ -512,7 +531,6 @@ as $$
     'completed', count(*) filter (where t.status = 'completed'),
     'missed', count(*) filter (where t.status = 'missed'),
     'cancelled', count(*) filter (where t.status = 'cancelled'),
-    'deleted', count(*) filter (where t.status = 'cancelled'),
     'stale', count(*) filter (
       where t.status in ('planned','in_progress','missed')
         and t.scheduled_at is not null
@@ -847,9 +865,14 @@ begin
   where ((from_id = auth.uid() and to_id = p_to_id) or (from_id = p_to_id and to_id = auth.uid()))
     and status = 'pending';
   if v_existing > 0 then raise exception 'Запрос уже отправлен'; end if;
-  insert into public.couple_requests (from_id, to_id)
-  values (auth.uid(), p_to_id)
-  returning * into v_new;
+  begin
+    insert into public.couple_requests (from_id, to_id)
+    values (auth.uid(), p_to_id)
+    returning * into v_new;
+  exception when unique_violation then
+    -- гонка: параллельный запрос уже вставлен — отвечаем понятной ошибкой
+    raise exception 'Запрос уже отправлен';
+  end;
   return public.request_view(v_new.id);
 end
 $$;
@@ -867,6 +890,15 @@ begin
   if v_req.to_id <> auth.uid() then raise exception 'Отвечать может только тот, кому отправили запрос'; end if;
   if v_req.status <> 'pending' then raise exception 'Запрос уже обработан'; end if;
   if p_approve then
+    -- Сериализуем одновременные ответы: блокируем профили обеих сторон в
+    -- фиксированном (лексикографическом) порядке, чтобы не было гонки/дедлоков.
+    if auth.uid()::text < v_req.from_id::text then
+      perform 1 from public.profiles where id = auth.uid() for update;
+      perform 1 from public.profiles where id = v_req.from_id for update;
+    else
+      perform 1 from public.profiles where id = v_req.from_id for update;
+      perform 1 from public.profiles where id = auth.uid() for update;
+    end if;
     if public.auth_couple_id() is not null then raise exception 'Вы уже в паре'; end if;
     if (select couple_id from public.profiles where id = v_req.from_id) is not null then
       raise exception 'Отправитель уже в паре';
@@ -1064,7 +1096,7 @@ as $$
 declare
   v_couple_id uuid := public.auth_couple_id();
 begin
-  if v_couple_id is null then raise exception 'Vy ne v pare'; end if;
+  if v_couple_id is null then raise exception 'Вы не в паре'; end if;
   if p_free then
     insert into public.free_days (couple_id, user_id, day)
     values (v_couple_id, auth.uid(), p_day)
