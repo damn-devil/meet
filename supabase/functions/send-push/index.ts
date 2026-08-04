@@ -25,7 +25,12 @@ const admin = createClient(supabaseUrl, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
 
-webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
+let vapidError = ''
+try {
+  webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
+} catch (e) {
+  vapidError = String(e?.message || e)
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -79,6 +84,7 @@ serve(async (req) => {
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
     if (!token) return json({ error: 'Нет авторизации' }, 401)
     if (!vapidPublic || !vapidPrivate) return json({ error: 'VAPID не настроен' }, 500)
+    if (vapidError) return json({ error: `VAPID: ${vapidError}` }, 500)
 
     const { data: me, error: authError } = await admin.auth.getUser(token)
     if (authError || !me?.user) return json({ error: 'Сессия недействительна' }, 401)
