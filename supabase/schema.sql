@@ -93,6 +93,7 @@ alter table public.tasks drop column if exists place_name;
 alter table public.tasks drop column if exists address;
 alter table public.tasks drop column if exists lat;
 alter table public.tasks drop column if exists lng;
+alter table public.tasks add column if not exists edit_count int not null default 0;
 
 -- Комментарии к планам удалены (drop table после предыдущих версий)
 drop table if exists public.comments cascade;
