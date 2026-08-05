@@ -97,35 +97,6 @@ serve(async (req) => {
     const taskId = body.task_id ? String(body.task_id) : null
     const toUserId = body.to_user_id ? String(body.to_user_id) : null
 
-    // Тестовый пуш: шлём сами себе, без таблицы уведомлений. Используется
-    // кнопкой «Тест пуша», чтобы проверить всю цепочку на одном устройстве.
-    if (type === 'test') {
-      const { data: profile, error: profileError } = await admin
-        .from('profiles')
-        .select('couple_id')
-        .eq('id', me.user.id)
-        .maybeSingle()
-      const { data: mySubs, error: subsError } = await admin
-        .from('push_subscriptions')
-        .select('endpoint, keys')
-        .eq('user_id', me.user.id)
-      const debug = {
-        url: supabaseUrl,
-        userId: me.user.id,
-        coupleId: profile?.couple_id || null,
-        subsCount: mySubs?.length || 0,
-        subsError: subsError?.message || null,
-        profileError: profileError?.message || null,
-      }
-      if (!mySubs?.length) return json({ ok: true, pushed: 0, errors: ['Нет подписок в БД'], debug })
-      const { pushed, errors } = await sendToSubs(
-        mySubs,
-        JSON.stringify({ title: 'Universe of Plans', body: 'Тест: пуш работает!', url: '.' }),
-        { TTL: 300, urgency: 'high' }
-      )
-      return json({ ok: true, pushed, errors, debug })
-    }
-
     // Получатель: явный user_id (запросы на пару) либо партнёр по паре.
     let recipientId = toUserId
     if (!recipientId) {

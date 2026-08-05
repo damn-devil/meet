@@ -7,28 +7,24 @@ export async function getToken() {
 }
 
 // Запрос к Edge Function (пуш-уведомления). Вызывается «в фоне» — после действия
-// партнёру шлётся самое свежее непросмотренное уведомление из БД. Возвращает
-// ответ функции (или { error }) — для кнопки «Тест пуша».
+// партнёру шлётся самое свежее неотправленное уведомление из БД.
 export async function sendPush(type, taskId, toUserId) {
   try {
     const client = supabaseReady()
     const token = await getToken()
-    if (!token) return { error: 'Нет активной сессии' }
+    if (!token) return null
     const res = await fetch(`${client.supabaseUrl}/functions/v1/send-push`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ type, task_id: taskId || null, to_user_id: toUserId || null }),
     })
-    if (res.status === 404) return { error: 'Функция send-push не задеплоена' }
-    const body = await res.json().catch(() => null)
-    if (!res.ok) {
-      const msg = body?.error || `Ошибка ${res.status}`
-      if (import.meta.env.DEV) console.warn('send-push:', res.status, msg)
-      return { error: msg, url: client.supabaseUrl }
+    if (res.status === 404) return null // функция не задеплоена — не критично
+    if (!res.ok && import.meta.env.DEV) {
+      console.warn('send-push:', res.status, (await res.text().catch(() => '')).slice(0, 200))
     }
-    return { ...(body || { ok: true }), url: client.supabaseUrl }
-  } catch (e) {
-    return { error: e?.message || 'Сеть недоступна' }
+    return res
+  } catch {
+    return null
   }
 }
 
